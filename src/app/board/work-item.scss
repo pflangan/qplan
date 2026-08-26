@@ -1,0 +1,720 @@
+:host {
+  display: block;
+}
+
+.work-item {
+  border: 3px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff;
+  border-color: var(--project-color, #e2e8f0);
+
+  // Whole-card drop target feedback while an engineer is dragged
+  &.drop-ok {
+    box-shadow: inset 0 0 0 2px #10b981;
+  }
+
+  &.drop-no {
+    opacity: 0.55;
+  }
+}
+
+.wi-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+
+  .size-badge {
+    font-size: 11px;
+    font-weight: 800;
+    color: white;
+    background: var(--size-color, #94a3b8);
+    border-radius: 5px;
+    padding: 2px 5px;
+    flex-shrink: 0;
+  }
+
+  .wi-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .no-tl {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 5px;
+    color: #b45309;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .rm {
+    border: none;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    display: grid;
+    place-items: center;
+
+    &:hover {
+      background: #fee2e2;
+      color: #ef4444;
+    }
+  }
+}
+
+.wi-meta {
+  margin: -2px 0 0;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+// One horizontal sprint track per slot: tiny index gutter + quarter-wide track
+.slot-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 22px;
+}
+
+// Seat number + tech-lead checkbox side by side in the gutter
+// Seat gutter: wide enough for seat number + TL pill without overflow.
+// MUST stay in sync with .ruler-gutter / .cap-pct in team-lane.scss so the
+// sprint tracks align with the ruler and capacity ticks.
+.slot-label {
+  width: 48px;
+  flex-shrink: 0;
+  padding-right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  box-sizing: border-box;
+
+  // Fixed-width number so 1 vs 2 digits never shifts the TL pill
+  .seat-no {
+    min-width: 12px;
+    text-align: right;
+    font-size: 10px;
+    color: #94a3b8;
+  }
+
+  // Small pill TL toggle styled like the t-shirt size chips
+  .tl-btn {
+    flex-shrink: 0;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1.3;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+      border-color: #f59e0b;
+      color: #f59e0b;
+    }
+
+    &.on {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      color: white;
+    }
+  }
+}
+
+.track {
+  position: relative;
+  // Never shrink below the quarter width: when the lane is squeezed,
+  // the board scrolls instead of crushing the sprint grid.
+  flex-shrink: 0;
+  border-radius: 6px;
+  // Light gray bed stays visible after an engineer is assigned so the
+  // sprint ticks remain readable while dragging the bar to reposition.
+  background-color: #f8fafc;
+  background-image: repeating-linear-gradient(
+    to right,
+    #eef2f7 0,
+    #eef2f7 1px,
+    transparent 1px,
+    transparent var(--px, 36px)
+  );
+
+  &.empty {
+    border: 1.5px dashed #cbd5e1;
+    display: grid;
+    place-items: center;
+    color: #666;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: all 0.15s;
+    // Pointer arrow + green person-with-plus badge: click opens the assign menu.
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'><path d='M3 2 L3 19 L7.5 15 L10.2 21 L12.8 19.8 L10.2 14 L15.5 14 Z' fill='%231e293b' stroke='white' stroke-width='1.3' stroke-linejoin='round'/><circle cx='20.5' cy='20.5' r='8.5' fill='%2310b981' stroke='white' stroke-width='1.5'/><circle cx='18' cy='18.2' r='2.4' fill='white'/><path d='M13.8 26.4 c0-2.9 1.9-4.6 4.2-4.6 s4.2 1.7 4.2 4.6 z' fill='white'/><path d='M25.5 15 v4 M23.5 17 h4' stroke='white' stroke-width='1.8' stroke-linecap='round'/></svg>") 3 2,
+      pointer;
+
+    span {
+      padding: 0 4px;
+    }
+
+    &.drop-ok {
+      border-color: #10b981 !important;
+      background: #ecfdf5;
+      box-shadow: inset 0 0 0 1.5px #10b981;
+    }
+
+    &.drop-no {
+      border-color: #fecaca !important;
+      background: #fef2f2;
+      box-shadow: inset 0 0 0 1.5px #ef4444;
+      opacity: 0.55;
+    }
+  }
+}
+
+// Allocated engineer bar: positioned by start sprint, dragged sideways to shift
+.bar {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 5px;
+  color: white;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  overflow: hidden;
+  background: linear-gradient(135deg, #334155, #1e293b);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.3);
+  transition: left 0.12s ease-out, width 0.12s ease-out, box-shadow 0.15s;
+
+  &.shifting {
+    cursor: grabbing;
+    z-index: 5;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.4);
+    transition: box-shadow 0.15s;
+  }
+
+  .bar-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .grade-tag {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 3px;
+    border-radius: 4px;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .unassign {
+    display: none;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+    cursor: pointer;
+    font-size: 11px;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.85);
+      color: white;
+    }
+  }
+
+  &:hover .unassign {
+    display: grid;
+    place-items: center;
+  }
+}
+
+// Read-only crew roster on owned cards: everyone on this project
+.crew {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+  padding: 6px 8px 0;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.crew-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #475569;
+}
+
+.crew-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #334155;
+  min-height: 15px;
+
+  .crew-idx {
+    width: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .grade-tag {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 4px;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .crew-tl {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: #f59e0b;
+    color: white;
+    flex-shrink: 0;
+    line-height: 1.3;
+  }
+
+  .crew-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &.open {
+      color: #475569;
+      font-style: italic;
+      font-weight: 500;
+    }
+  }
+
+  .crew-win {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    flex-shrink: 0;
+  }
+
+  .crew-team {
+    margin-left: auto;
+    font-size: 11px;
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+
+    &.accountable {
+      font-weight: 700;
+      color: #0f172a;
+    }
+  }
+}
+
+// Rich hover panel above a filled bar: engineer, team, capacity, quarter load
+.bar-tip {
+  position: fixed;
+  z-index: 60;
+  transform: translateY(calc(-100% - 8px));
+  width: 264px;
+  box-sizing: border-box;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.45);
+  font-size: 12px;
+  pointer-events: auto;
+
+  .tip-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    strong {
+      font-size: 13px;
+      color: white;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .grade-tag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 4px;
+      border-radius: 4px;
+      color: white;
+      flex-shrink: 0;
+    }
+  }
+
+  .tip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #cbd5e1;
+
+    .swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    &.cap {
+      justify-content: space-between;
+
+      b {
+        color: #7dd3fc;
+        font-size: 12.5px;
+
+        &.over {
+          color: #f87171;
+        }
+      }
+    }
+  }
+
+  .tip-tl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #cbd5e1;
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      accent-color: #f59e0b;
+      width: 13px;
+      height: 13px;
+      margin: 0;
+      cursor: pointer;
+    }
+  }
+
+  .tip-sub {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  .tip-allocs {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 4px;
+      border-radius: 5px;
+
+      &.current {
+        background: rgba(125, 211, 252, 0.12);
+
+        .a-name {
+          color: white;
+          font-weight: 700;
+        }
+      }
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .a-name {
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #cbd5e1;
+    }
+
+    .a-win {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+  }
+
+  .tip-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    border-top: 1px solid rgba(148, 163, 184, 0.15);
+    padding-top: 6px;
+    margin-top: 2px;
+  }
+}
+
+// Right-click "add / switch" menu (fixed to the viewport at cursor position)
+// Right-click "add / switch" menu (fixed to the viewport at cursor position).
+// No max-height: the full candidate list is always visible — if it runs past
+// the viewport, panning the canvas moves the menu with it (it stays open).
+.ctx-menu {
+  position: fixed;
+  z-index: 70;
+  min-width: 240px;
+  max-width: 300px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.3);
+  padding: 4px;
+
+  .ctx-head {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #475569;
+    padding: 4px 6px 5px;
+  }
+
+  button {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 5px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+
+    .ctx-name {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      .grade-tag {
+        font-size: 10px;
+        font-weight: 800;
+        padding: 1px 4px;
+        border-radius: 4px;
+        color: white;
+        flex-shrink: 0;
+      }
+    }
+
+    .ctx-meta {
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+    }
+  }
+}
+
+// Rich confirm dialog for the ✕ remove-from-board: centered on the viewport
+// (overlay coords from toOverlayPoint) and counter-zoomed so it stays crisp at
+// any canvas zoom.
+.board-confirm {
+  position: fixed;
+  z-index: 80;
+  width: min(560px, calc(100vw - 32px));
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.35);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .bc-project {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+
+    .bc-dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    strong {
+      font-size: 21px;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bc-meta {
+      font-size: 18px;
+      font-weight: 600;
+      color: #64748b;
+    }
+  }
+
+  .bc-teams {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+
+    .bc-label {
+      width: 100%;
+      font-size: 18px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .bc-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #334155;
+      background: #f1f5f9;
+      border-radius: 999px;
+      padding: 4px 12px;
+
+      .bc-ct-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+    }
+  }
+
+  .bc-note {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.45;
+    color: #64748b;
+  }
+
+  footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .bc-btn {
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #334155;
+    font-size: 19.5px;
+    font-weight: 700;
+    border-radius: 7px;
+    padding: 8px 16px;
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+
+    &.danger {
+      background: #ef4444;
+      border-color: #ef4444;
+      color: white;
+
+      &:hover {
+        background: #dc2626;
+      }
+    }
+  }
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.35;
+}
+
+.cdk-drag-animating {
+  transition: transform 120ms ease-out;
+}

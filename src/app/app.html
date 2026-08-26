@@ -1,0 +1,101 @@
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◫</span>
+    <h1>Quarter Capacity Planner</h1>
+  </div>
+  <div class="quarter-controls">
+    <div class="quarter-select">
+      @for (q of store.quarters(); track q.id; let i = $index) {
+        <button
+          type="button"
+          class="quarter-chip"
+          [class.active]="store.selectedQuarterId() === q.id"
+          (click)="store.selectQuarter(q.id)"
+          [appTip]="store.quarterDateRange(i)"
+        >
+          {{ q.label }}
+        </button>
+      }
+    </div>
+    <div class="sprint-toggle">
+      <span class="sprint-label">Sprints</span>
+      @for (n of sprintOptions; track n) {
+        <button
+          type="button"
+          [class.active]="store.selectedQuarter().sprints === n"
+          (click)="store.setQuarterSprints(store.selectedQuarterId(), n)"
+        >
+          {{ n }}
+        </button>
+      }
+      <span class="weeks-hint">{{ store.quarterWeeks() }} weeks</span>
+    </div>
+    <div class="layout-toggle">
+      <span class="layout-label">Planner</span>
+      <button
+        type="button"
+        [class.active]="layoutMode() === 'canvas'"
+        (click)="layoutMode.set('canvas')"
+        appTip="Canvas layout"
+      >
+        Canvas
+      </button>
+      <button
+        type="button"
+        [class.active]="layoutMode() === 'fixed'"
+        (click)="layoutMode.set('fixed')"
+        appTip="Fixed layout"
+      >
+        Fixed
+      </button>
+    </div>
+    <div class="io-controls">
+      <button type="button" class="io-btn" (click)="settingsOpen.set(true)" appTip="Settings">⚙</button>
+      <button type="button" class="io-btn" (click)="exportPlan()" appTip="Save everything to a JSON file">
+        ↓ Export
+      </button>
+      <button type="button" class="io-btn" (click)="fileInput.click()" appTip="Load a previously exported plan">
+        ↑ Import
+      </button>
+      <button type="button" class="io-btn danger" (click)="confirmNew.set(true)" appTip="Clear the board and start over">
+        ✚ New board
+      </button>
+      <input #fileInput type="file" accept=".json,application/json" class="io-file" (change)="importPlan($event)" />
+    </div>
+  </div>
+</header>
+
+<main
+  class="layout"
+  [class.left-sliver]="!store.projectsExpanded()"
+  [class.right-sliver]="!store.onCallExpanded()"
+>
+  <app-projects-panel class="panel panel-left" [collapsed]="!store.projectsExpanded()" />
+  <app-board class="panel panel-center" [layoutMode]="layoutMode()" />
+  <app-teams-panel class="panel panel-right" [collapsed]="!store.onCallExpanded()" />
+</main>
+
+@if (settingsOpen()) {
+  <app-settings-dialog [firstRun]="!store.loadedFromStorage" (closed)="settingsOpen.set(false)" />
+}
+
+@if (confirmNew()) {
+  <div class="overlay" (click)="confirmNew.set(false)">
+    <div class="confirm-dialog" (click)="$event.stopPropagation()" (keydown.escape)="confirmNew.set(false)">
+      <h2>Start a new board?</h2>
+      <p>
+        This clears <strong>all teams, projects, and allocations</strong> across every
+        quarter. There is no undo — <strong>export your data first</strong> if you want to keep it.
+      </p>
+      <footer>
+        <button type="button" class="c-btn" (click)="confirmNew.set(false)">Cancel</button>
+        <button type="button" class="c-btn" (click)="exportPlan()" appTip="Download everything as JSON before wiping">↓ Export first</button>
+        <button type="button" class="c-btn danger" (click)="startNewBoard()">Start new board</button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (store.toast(); as message) {
+  <div class="toast">{{ message }}</div>
+}

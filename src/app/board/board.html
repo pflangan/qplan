@@ -1,0 +1,87 @@
+<div class="board-header">
+  <h2>{{ store.selectedQuarter().label }} Board</h2>
+  <span class="meta">
+    {{ store.selectedQuarter().sprints }} sprints · {{ store.quarterWeeks() }} weeks ·
+    {{ store.teams().length }} team{{ store.teams().length === 1 ? '' : 's' }}
+    @if (dateRange(); as r) {
+      · {{ r }}
+    }
+  </span>
+</div>
+
+@if (store.teams().length > 0) {
+  <div class="group-ribbon">
+    <div class="ribbon-title">
+      <h4>All teams</h4>
+      <span class="cap">{{ groupFree() }} free of {{ groupTotal() }}</span>
+      @if (groupOver() > 0) {
+        <span class="over-note">over by {{ groupOver() }}</span>
+      }
+    </div>
+    <div class="squares">
+      @for (c of groupCells(); track $index) {
+        <span
+          class="sq"
+          [class.open]="c.state === 'open'"
+          [class.filled]="c.state === 'filled'"
+          [class.over]="c.over"
+          [style.--sq-color]="c.color"
+          [appTip]="c.title"
+        ></span>
+      }
+    </div>
+  </div>
+}
+
+<div class="board-body">
+  @if (store.teams().length > 0) {
+    <div class="canvas-viewport" #viewportEl [class.fixed]="layoutMode() === 'fixed'" (pointerdown)="onCanvasPointerDown($event)">
+      <div
+        class="pan-layer"
+        [style.transform]="'translate(' + panX() + 'px,' + panY() + 'px)'"
+        [style.width.px]="layoutMode() === 'fixed' ? boardSize().w : null"
+        [style.height.px]="layoutMode() === 'fixed' ? boardSize().h : null"
+      >
+        <div
+          class="zoom-layer"
+          [style.zoom]="zoom().toString()"
+          [style.width.px]="boardSize().w"
+          [style.height.px]="boardSize().h"
+        >
+          @for (team of store.teams(); track team.id) {
+            <div
+              class="lane-slot"
+              #laneSlot
+              [style.left.px]="laneLeft(team.id)"
+              [style.top.px]="laneTop(team.id)"
+              [style.width.px]="laneWidth()"
+              [class.dragging]="dragTeamId() === team.id"
+            >
+              <app-team-lane
+                [class.fixed]="layoutMode() === 'fixed'"
+                [teamId]="team.id"
+                [px]="px"
+                [zoom]="zoom()"
+                [layoutMode]="layoutMode()"
+                (headerDragStart)="onHeaderDragStart($event, team.id)"
+              />
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+    @if (layoutMode() === 'canvas') {
+      <div class="zoom-bar">
+        <button type="button" (click)="zoomStep(-1)" appTip="Zoom out (⌘−)">−</button>
+        <button type="button" class="pct" (click)="resetZoom()" appTip="Reset zoom to 100% (⌘0)">{{ zoomPct() }}</button>
+        <button type="button" (click)="zoomStep(1)" appTip="Zoom in (⌘+)">+</button>
+        <button type="button" (click)="fit()" class="fit">Fit</button>
+      </div>
+    }
+  } @else {
+    <div class="empty-state">
+      <p class="big">No teams yet</p>
+      <p>Add Code Owner teams in the right panel — each team gets a lane here.</p>
+    </div>
+  }
+</div>

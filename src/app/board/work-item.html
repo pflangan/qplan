@@ -1,0 +1,207 @@
+<article
+  class="work-item"
+  [class.owned]="item().role === 'owned'"
+  [class.supporting]="item().role === 'supporting'"
+  [style.--project-color]="projectColor()"
+  [style.--px]="px() + 'px'"
+  [id]="listId()"
+  cdkDropList
+  [cdkDropListConnectedTo]="connectedTo()"
+  [cdkDropListEnterPredicate]="cardPredicate"
+  (cdkDropListDropped)="onDrop($event)"
+  [class.drop-ok]="cardDropState() === 'ok'"
+  [class.drop-no]="cardDropState() === 'no'"
+>
+  <header class="wi-head">
+    <span class="size-badge" [style.--size-color]="sizeColor()" [appTip]="sizeTip().title" [appTipDetail]="sizeTip().detail">{{ item().project.size }}</span>
+    <span class="wi-name" [appTip]="item().project.name">{{ item().project.name }}</span>
+    @if (noTL()) {
+      <span class="no-tl" appTip="No tech lead assigned" appTipDetail="Tick the TL box on a filled seat">no TL</span>
+    }
+    <button type="button" class="rm" (click)="askRemoveFromBoard($event)" appTip="Remove from board">✕</button>
+  </header>
+  <p class="wi-meta">{{ meta() }}</p>
+
+  <div class="slots">
+    @for (s of item().slots; track s.slot.id; let i = $index) {
+      <div class="slot-row">
+        <span class="slot-label" [appTip]="minLabel(s.slot) + ' seat'" appTipDetail="Tap TL to mark the tech lead">
+          <span class="seat-no">{{ i + 1 }}</span>
+          <button
+            type="button"
+            class="tl-btn"
+            [class.on]="s.slot.tl"
+            (click)="toggleTL(s.slot.id)"
+          >TL</button>
+        </span>
+        @if (s.engineer; as engineer) {
+          <div class="track" [style.width.px]="trackWidth()">
+            <div
+              class="bar"
+              [class.shifting]="dragging()?.slotId === s.slot.id"
+              [style.left.px]="offsetOf(s)"
+              [style.width.px]="sprintsOf(s) * px()"
+              (pointerdown)="onPointerDown($event, s)"
+              (contextmenu)="onBarCtxMenu($event, s)"
+              (mouseenter)="showTip($event, s)"
+              (mouseleave)="scheduleHide()"
+            >
+              <span class="grade-tag" [style.background]="grades()[engineer.grade].color">
+                {{ engineer.grade }}
+              </span>
+              <span class="bar-name">{{ engineer.name }}</span>
+              <button type="button" class="unassign" (click)="unassign(s.slot.id)" appTip="Unassign">✕</button>
+            </div>
+          </div>
+        } @else {
+          <div
+            class="track empty"
+            [style.width.px]="trackWidth()"
+            [id]="slotListId(s.slot.id)"
+            cdkDropList
+            [cdkDropListConnectedTo]="connectedTo()"
+            [cdkDropListEnterPredicate]="slotPredicate(s.slot.id)"
+            (cdkDropListDropped)="onDrop($event)"
+            [class.drop-ok]="dropState(s.slot.id) === 'ok'"
+            [class.drop-no]="dropState(s.slot.id) === 'no'"
+            [appTip]="dropTitle(s.slot.id)"
+            (click)="onTrackCtxMenu($event, s)"
+            (contextmenu)="onTrackCtxMenu($event, s)"
+          >
+            <span>{{ minLabel(s.slot) }} x {{ store.slotSprints(item().project) }}S</span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  @if (crew().length > 0) {
+    <div class="crew">
+      <span class="crew-label">Team</span>
+      @for (c of crew(); track c.index) {
+        <div class="crew-row">
+          <span class="crew-idx">{{ c.index }}</span>
+          @if (c.engineer; as e) {
+            <span class="grade-tag" [style.background]="grades()[e.grade].color">{{ e.grade }}</span>
+            <span class="crew-name">{{ e.name }}</span>
+            @if (c.tl) {
+              <span class="crew-tl">TL</span>
+            }
+            <span class="crew-win">S{{ c.start + 1 }}–S{{ c.start + c.sprints }}</span>
+          } @else {
+            <span class="crew-name open">unresourced{{ c.tl ? ' (TL)' : '' }}</span>
+          }
+          <span class="crew-team" [class.accountable]="c.accountable" [appTip]="c.accountable ? 'Accountable team' : ''">{{ c.teamName }}</span>
+        </div>
+      }
+    </div>
+  }
+</article>
+
+@if (tip(); as t) {
+  <div
+    class="bar-tip"
+    [style.zoom]="(1 / zoom()).toString()"
+    [style.left.px]="t.x"
+    [style.top.px]="t.y"
+    (mouseenter)="cancelHide()"
+    (mouseleave)="scheduleHide()"
+  >
+    <div class="tip-head">
+      <span class="grade-tag" [style.background]="grades()[t.engineer.grade].color">{{ t.engineer.grade }}</span>
+      <strong>{{ t.engineer.name }}</strong>
+    </div>
+    @if (t.team; as team) {
+      <div class="tip-row">
+        <span class="swatch" [style.background]="team.color"></span>
+        <span>{{ team.name }}</span>
+      </div>
+    }
+    <div class="tip-row cap">
+      <span>{{ t.used }} of {{ t.avail }} sprints allocated</span>
+      <b [class.over]="t.pct > 100">{{ t.pct }}%</b>
+    </div>
+    <label class="tip-tl" (click)="$event.stopPropagation()">
+      <input type="checkbox" [checked]="t.tl" (change)="toggleTL(t.currentSlotId)" />
+      Tech lead
+    </label>
+    @if (t.allocations.length > 1) {
+      <div class="tip-sub">All work this quarter</div>
+      <ul class="tip-allocs">
+        @for (a of t.allocations; track a.slotId) {
+          <li [class.current]="a.slotId === t.currentSlotId">
+            <span class="dot" [style.background]="a.color"></span>
+            <span class="a-name">{{ a.projectName }}</span>
+            <span class="a-win">S{{ a.start + 1 }}–S{{ a.start + a.sprints }}</span>
+          </li>
+        }
+      </ul>
+    }
+    <div class="tip-hint">drag to shift within the quarter</div>
+  </div>
+}
+
+@if (ctxMenu(); as menu) {
+  <div
+    class="ctx-menu"
+    [style.zoom]="(1 / zoom()).toString()"
+    [style.left.px]="menu.x"
+    [style.top.px]="menu.y"
+    (click)="$event.stopPropagation()"
+    (contextmenu)="$event.preventDefault(); $event.stopPropagation()"
+  >
+    <div class="ctx-head">
+      @if (menu.mode === 'switch') {
+        Switch {{ menu.currentName }} for…
+      } @else {
+        Add engineer to {{ item().project.name }}…
+      }
+    </div>
+    @for (c of menu.candidates; track c.engineerId) {
+      <button type="button" (click)="assignFromMenu(c.engineerId)">
+        <span class="ctx-name">
+          <span class="grade-tag" [style.background]="grades()[c.grade].color">{{ c.grade }}</span>
+          {{ c.name }}
+        </span>
+        <span class="ctx-meta">{{ c.teamName }} · {{ c.freeSprints }} sprints free</span>
+      </button>
+    }
+  </div>
+}
+
+@if (offBoardConfirm(); as c) {
+  <div
+    class="board-confirm"
+    [style.zoom]="(1 / zoom()).toString()"
+    [style.left.px]="c.x"
+    [style.top.px]="c.y"
+    (click)="$event.stopPropagation()"
+    (contextmenu)="$event.preventDefault(); $event.stopPropagation()"
+  >
+    <h3>Remove from board?</h3>
+    <div class="bc-project">
+      <span class="bc-dot" [style.background]="projectColor()"></span>
+      <strong>{{ item().project.name }}</strong>
+      <span class="bc-meta">{{ filled() }}/{{ item().project.slots.length }} eng assigned</span>
+    </div>
+    @if (boardTeams().length) {
+      <div class="bc-teams">
+        <span class="bc-label">Team allocations to be cleared:</span>
+        @for (t of boardTeams(); track t.name) {
+          <span class="bc-chip">
+            <span class="bc-ct-dot" [style.background]="t.color"></span>
+            {{ t.name }} · {{ t.count }} eng
+          </span>
+        }
+      </div>
+    }
+    <p class="bc-note">
+      The project stays in the Projects panel with its engineer seats — only the
+      board placement and sprint allocations for this quarter are removed.
+    </p>
+    <footer>
+      <button type="button" class="bc-btn" (click)="offBoardConfirm.set(null)">Cancel</button>
+      <button type="button" class="bc-btn danger" (click)="removeFromBoard()">Remove</button>
+    </footer>
+  </div>
+}

@@ -1,0 +1,257 @@
+@if (team(); as team) {
+  <section class="team" [style.--team-color]="team.color">
+    <header class="team-head">
+      <button
+        type="button"
+        class="swatch"
+        (click)="togglePalette(); $event.stopPropagation()"
+        appTip="Team color"
+      ></button>
+      @if (paletteOpen()) {
+        <div class="palette" (click)="$event.stopPropagation()">
+          @for (c of palette; track c) {
+            <button
+              type="button"
+              class="pal"
+              [style.background]="c"
+              [class.active]="team.color === c"
+              (click)="pickColor(c)"
+              [appTip]="c"
+            ></button>
+          }
+        </div>
+      }
+      @if (editingName()) {
+        <input
+          class="name-input"
+          autofocus
+          [ngModel]="draftName()"
+          (ngModelChange)="draftName.set($event)"
+          (keyup.enter)="commitRename()"
+          (keyup.escape)="editingName.set(false)"
+          (blur)="commitRename()"
+        />
+      } @else {
+        <button type="button" class="name" (click)="startRename()" appTip="Click to rename">
+          {{ team.name }}
+        </button>
+      }
+      <button type="button" class="icon-btn danger" (click)="removeTeam()" appTip="Delete team">🗑</button>
+    </header>
+
+    <div class="engineers">
+      @for (e of team.engineers; track e.id) {
+        <div
+          class="engineer"
+          [class.in-capacity]="store.isInCapacity(e.id)"
+          (click)="toggleCapacity(e.id)"
+          (mouseenter)="showEngTip($event, e.id)"
+          (mouseleave)="scheduleHideTip()"
+        >
+          <span class="eng-name">{{ e.name }}</span>
+          <select
+            class="grade-select"
+            [ngModel]="e.grade"
+            (ngModelChange)="setGrade(e.id, $event)"
+            (click)="$event.stopPropagation()"
+            [style.color]="grades()[e.grade].color"
+            [style.font-weight]="700"
+            [appTip]="grades()[e.grade].label"
+          >
+            @for (g of gradeList(); track g.key) {
+              <option [ngValue]="g.key">{{ g.key }} · {{ g.value.label }}</option>
+            }
+          </select>
+          <button
+            type="button"
+            class="icon-btn remove-eng"
+            (click)="askRemoveEngineer(e.id); $event.stopPropagation()"
+            appTip="Remove engineer"
+          >
+            ×
+          </button>
+        </div>
+      } @empty {
+        <p class="none">No engineers yet</p>
+      }
+    </div>
+
+    @if (addingEngineer()) {
+      <div class="add-engineer">
+        <input
+          type="text"
+          placeholder="Engineer name"
+          [ngModel]="newEngineerName()"
+          (ngModelChange)="newEngineerName.set($event)"
+          (keyup.enter)="addEngineer()"
+        />
+        <select [ngModel]="newEngineerGrade()" (ngModelChange)="newEngineerGrade.set($event)">
+          @for (g of gradeList(); track g.key) {
+            <option [ngValue]="g.key">{{ g.key }} · {{ g.value.label }}</option>
+          }
+        </select>
+        <button type="button" class="mini-btn primary" (click)="addEngineer()">Add</button>
+      </div>
+    }
+
+    @if (importing()) {
+      <div class="import">
+        <textarea
+          rows="4"
+          placeholder="One per line, e.g.&#10;Jane Doe : G5&#10;John Smith, G4&#10;Alex Jones"
+          [ngModel]="importText()"
+          (ngModelChange)="importText.set($event)"
+        ></textarea>
+        <div class="import-actions">
+          <button type="button" class="mini-btn" (click)="toggleImport()">Cancel</button>
+          <button type="button" class="mini-btn primary" (click)="doImport()">Import</button>
+        </div>
+      </div>
+    }
+
+    <footer class="team-foot">
+      <button type="button" class="mini-btn" (click)="toggleAddEngineer()" appTip="Add engineer">+ New</button>
+      <button type="button" class="mini-btn" (click)="toggleImport()" appTip="Import engineer list">Import</button>
+      <button type="button" class="mini-btn add-all" (click)="store.addAllToQuarter(team.id)" appTip="Add all engineers to the selected quarter">+All</button>
+    </footer>
+
+    @if (confirmingRemoveEng()) {
+      <div class="confirm-overlay" (click)="confirmingRemoveEng.set(false)">
+        <div
+          class="confirm-dialog"
+          tabindex="0"
+          (click)="$event.stopPropagation()"
+          (keydown.escape)="confirmingRemoveEng.set(false)"
+        >
+          <h2>Remove engineer?</h2>
+          @if (pendingEngineer(); as eng) {
+            <div class="confirm-engineer">
+              <span class="ce-grade" [style.background]="grades()[eng.grade].color">{{ eng.grade }}</span>
+              <strong>{{ eng.name }}</strong>
+              <span class="ce-meta">{{ team.name }}</span>
+            </div>
+          }
+          @if (pendingAllocs().length) {
+            <div class="confirm-allocs">
+              <span class="ca-label">Board placements to be cleared:</span>
+              @for (a of pendingAllocs(); track a.slotId) {
+                <span class="ca-chip">
+                  <span class="ca-dot" [style.background]="a.color"></span>
+                  {{ a.projectName }} · S{{ a.start + 1 }}–S{{ a.start + a.sprints }}
+                </span>
+              }
+            </div>
+          }
+          <p class="confirm-note">
+            The engineer is removed from the team and the quarter capacity, and any
+            engineer seat they hold on the Planning Board is freed.
+          </p>
+          <footer>
+            <button type="button" class="c-btn" (click)="confirmingRemoveEng.set(false)">Cancel</button>
+            <button type="button" class="c-btn danger" (click)="removeEngineer()">Remove engineer</button>
+          </footer>
+        </div>
+      </div>
+    }
+
+    @if (confirmingOffQuarter()) {
+      <div class="confirm-overlay" (click)="confirmingOffQuarter.set(false)">
+        <div
+          class="confirm-dialog"
+          tabindex="0"
+          (click)="$event.stopPropagation()"
+        >
+          <h2>Remove from quarter?</h2>
+          @if (pendingEngineer(); as eng) {
+            <div class="confirm-engineer">
+              <span class="ce-grade" [style.background]="grades()[eng.grade].color">{{ eng.grade }}</span>
+              <strong>{{ eng.name }}</strong>
+              <span class="ce-meta">{{ team.name }}</span>
+            </div>
+          }
+          @if (pendingAllocs().length) {
+            <div class="confirm-allocs">
+              <span class="ca-label">Board placements to be cleared:</span>
+              @for (a of pendingAllocs(); track a.slotId) {
+                <span class="ca-chip">
+                  <span class="ca-dot" [style.background]="a.color"></span>
+                  {{ a.projectName }} · S{{ a.start + 1 }}–S{{ a.start + a.sprints }}
+                </span>
+              }
+            </div>
+          }
+          <p class="confirm-note">
+            The engineer is removed from {{ team.name }}'s capacity for
+            {{ store.selectedQuarter().label }} and any engineer seat they hold on
+            the Planning Board is freed. Click the row again to re-add them.
+          </p>
+          <footer>
+            <button type="button" class="c-btn" (click)="confirmingOffQuarter.set(false)">Cancel</button>
+            <button type="button" class="c-btn danger" (click)="removeFromQuarter()">Remove from quarter</button>
+          </footer>
+        </div>
+      </div>
+    }
+    @if (engTipData(); as tip) {
+      <div
+        class="eng-tip"
+        [class.below]="tip.below"
+        [style.left.px]="tip.x"
+        [style.top.px]="tip.y"
+        (mouseenter)="clearTipTimer()"
+        (mouseleave)="scheduleHideTip()"
+      >
+        <div class="tip-head">
+          <span class="grade-tag" [style.background]="grades()[tip.engineer.grade].color">
+            {{ tip.engineer.grade }}
+          </span>
+          <strong>{{ tip.engineer.name }}</strong>
+        </div>
+        <div class="tip-sub">{{ team.name }} · {{ tip.quarter.label }}</div>
+
+        @if (tip.inCapacity) {
+          <div class="tip-cap">
+            <span>Quarter commitment</span>
+            <b [class]="tip.state">{{ tip.used }} / {{ tip.avail }} sprints · {{ tip.pct }}%</b>
+          </div>
+          <div class="tip-timeline">
+            @for (a of tip.allocations; track a.slotId) {
+              <div
+                class="tl-seg"
+                [style.left.%]="(a.start / tip.quarter.sprints) * 100"
+                [style.width.%]="(a.sprints / tip.quarter.sprints) * 100"
+                [style.background]="a.color"
+              ></div>
+            }
+            @if (tip.used > tip.avail) {
+              <div
+                class="tl-over"
+                [style.left.%]="(tip.avail / tip.quarter.sprints) * 100"
+                [style.width.%]="((tip.used > tip.quarter.sprints ? tip.quarter.sprints : tip.used) - tip.avail) / tip.quarter.sprints * 100"
+              ></div>
+            }
+          </div>
+
+          @if (tip.allocations.length) {
+            <div class="tip-sub">Committed to</div>
+            <ul class="tip-allocs">
+              @for (a of tip.allocations; track a.slotId) {
+                <li>
+                  <span class="dot" [style.background]="a.color"></span>
+                  <span class="a-name">{{ a.projectName }}</span>
+                  <span class="a-win">S{{ a.start + 1 }}–S{{ a.start + a.sprints }} · {{ a.sprints }}S</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="tip-empty">No commitments in {{ tip.quarter.label }} — fully available.</p>
+          }
+        } @else {
+          <p class="tip-empty">Not in {{ tip.quarter.label }} capacity — click the row to add them.</p>
+        }
+
+        <div class="tip-hint">Click the row to add / remove from quarter capacity</div>
+      </div>
+    }
+  </section>
+}

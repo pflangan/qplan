@@ -1,0 +1,293 @@
+@if (team(); as team) {
+  <section
+    class="lane"
+    [style.--team-color]="team.color"
+    [id]="laneListId()"
+    cdkDropList
+    [cdkDropListEnterPredicate]="projectPredicate"
+    (cdkDropListEntered)="projectHover.set(true)"
+    (cdkDropListExited)="projectHover.set(false)"
+    (cdkDropListDropped)="onDrop($event)"
+    [class.project-hover]="hoveredProject()"
+    [class.project-over]="hoveredProject() && overSprints() > 0"
+  >
+    <header class="lane-head" (pointerdown)="onHeadPointerDown($event)">
+      <div class="name-row">
+        <span class="swatch"></span>
+        <h3>{{ team.name }}</h3>
+      </div>
+      <span class="capacity" appTip="Total available sprints this quarter" appTipDetail="1 sprint = 2 weeks">
+        {{ totalSprints() }} capacity
+      </span>
+      @if (assignedSprints() > 0) {
+        <span class="assigned" appTip="Sprints committed to filled slots">
+          {{ assignedSprints() }} assigned · {{ availableSprints() }} free
+        </span>
+      }
+    </header>
+
+
+
+    <!-- Capacity panel: one square per sprint of team capacity -->
+    <div class="capacity-section">
+      <div class="cap-title">
+        <h4>Capacity</h4>
+        <span class="cap">{{ availableSprints() }} free of {{ totalSprints() }}</span>
+        @if (overSprints() > 0) {
+          <span class="over-note">over by {{ overSprints() }}</span>
+        }
+      </div>
+      <div class="squares">
+        @for (c of capacityCells(); track $index) {
+          <span
+            class="sq"
+            [class.open]="c.state === 'open'"
+            [class.filled]="c.state === 'filled'"
+            [class.preview]="c.state === 'preview'"
+            [class.over]="c.state === 'over' || c.over"
+            [style.--sq-color]="c.color"
+            [appTip]="c.title"
+          ></span>
+        } @empty {
+          <p class="hint">No capacity this quarter</p>
+        }
+      </div>
+    </div>
+
+    <!-- Available engineers: name + sprint stepper, capacity bar underneath -->
+    <div class="avail-section" [class.collapsed]="layoutMode() === 'fixed' && !availExpanded()">
+      <div class="avail-title">
+        <h4>Available</h4>
+        <span class="cap">{{ totalSprints() }} total</span>
+      </div>
+    <div class="sprint-ruler" aria-hidden="true">
+
+      @for (s of sprintNos(); track s; let i = $index) {
+        <span class="ruler-cell" [style.width.px]="px()">
+          S{{ s }}
+          @if (sprintDates()[i] && px() >= 30) {
+            <span class="ruler-date">{{ sprintDates()[i] }}</span>
+          }
+        </span>
+      }
+      <span class="ruler-gutter"></span>
+    </div>
+      <div
+        class="bars"
+        #barsEl
+        [id]="availListId()"
+        cdkDropList
+        cdkDropListSortingDisabled
+        [cdkDropListConnectedTo]="connectedTo()"
+        [cdkDropListEnterPredicate]="availPredicate"
+        (cdkDropListDropped)="onDrop($event)"
+      >
+        @for (m of members(); track m.engineer.id) {
+          <div
+            class="engineer-line"
+            cdkDrag
+            [cdkDragData]="{ kind: 'available', engineerId: m.engineer.id, name: m.engineer.name, grade: m.engineer.grade }"
+            (cdkDragStarted)="store.dragStarted(m.engineer.id)"
+            (cdkDragEnded)="store.dragEnded()"
+            [appTip]="availTipData() ? '' : 'Drag into a work slot'"
+            appTipDetail="Right-click for open seats"
+            (contextmenu)="onCtxMenu($event, m.engineer.id, m.engineer.name)"
+          >
+            <div class="line-1">
+              <span class="grade-tag" [style.background]="grades()[m.engineer.grade].color">
+                {{ m.engineer.grade }}
+              </span>
+              <button
+                type="button"
+                class="info-icon"
+                aria-label="Show engineer details"
+                (mouseenter)="showAvailTip($event, m.engineer.id)"
+                (mouseleave)="scheduleHideAvailTip()"
+                (click)="$event.stopPropagation()"
+              >
+                ℹ
+              </button>
+              <span class="line-name">{{ m.engineer.name }}</span>
+              <div class="sprints-ctrl" (click)="$event.stopPropagation()">
+                <button type="button" (click)="setSprints(m.engineer.id, m.sprints - 1)" appTip="Available one fewer sprint">−</button>
+                <span class="sprints" [appTip]="m.sprints + ' of ' + quarterSprints() + ' sprints available'">
+                  {{ m.sprints }}
+                </span>
+                <button type="button" (click)="setSprints(m.engineer.id, m.sprints + 1)" appTip="Available one more sprint">+</button>
+                <button type="button" class="rm" (click)="askRemoveMember($event, m.engineer.id)" appTip="Remove from quarter">✕</button>
+              </div>
+            </div>
+            <div class="cap-line">
+              <div class="cap-ticks" [style.width.px]="quarterSprints() * px()">
+                @for (s of sprintNos(); track s; let i = $index) {
+                  <span class="tick" [style.left.px]="i * px()"></span>
+                }
+                <div class="cap-track">
+                  @for (a of store.allocationsOf(m.engineer.id); track a.slotId) {
+                    <div
+                      class="cap-seg"
+                      [style.left.px]="a.start * px()"
+                      [style.width.px]="a.sprints * px()"
+                      [style.background]="a.color"
+                      [appTip]="a.projectName + ': S' + (a.start + 1) + '–S' + (a.start + a.sprints)"
+                    ></div>
+                  }
+                  @if (quarterSprints() > m.sprints) {
+                    <div
+                      class="cap-gray"
+                      [style.left.px]="m.sprints * px()"
+                      [style.width.px]="(quarterSprints() - m.sprints) * px()"
+                      [appTip]="'Not available beyond sprint ' + m.sprints"
+                    ></div>
+                  }
+                </div>
+              </div>
+              <span class="cap-pct" [class.over]="pctOf(m.sprints, m.engineer.id) > 100" appTip="% of available sprints allocated">{{ pctOf(m.sprints, m.engineer.id) }}</span>
+
+            </div>
+            <!-- Compact drag preview: grade tag + name only. Mirrors the
+                 project-card pattern: no let-data (the preview context is the
+                 directive's [data] input, which we don't bind) — the embedded
+                 view captures `m` from the @for scope directly. -->
+            <ng-template cdkDragPreview>
+              <div class="drag-chip" [style.--grade-color]="grades()[m.engineer.grade].color">
+                <span class="grade-tag" [style.background]="grades()[m.engineer.grade].color">{{ m.engineer.grade }}</span>
+                <span class="chip-name">{{ m.engineer.name }}</span>
+              </div>
+            </ng-template>
+          </div>
+        } @empty {
+          <p class="hint">Click engineers in the Teams panel to add capacity</p>
+        }
+      </div>
+      @if (layoutMode() === 'fixed' && availOverflows()) {
+        <button
+          type="button"
+          class="avail-toggle"
+          (click)="availExpanded.set(!availExpanded())"
+        >{{ availExpanded() ? 'Show fewer ▴' : 'Show all (' + members().length + ') ▾' }}</button>
+      }
+      @if (availTipData(); as tip) {
+        <div
+          class="avail-tip"
+          [class.below]="tip.below"
+          [style.zoom]="(1 / zoom()).toString()"
+          [style.left.px]="tip.x"
+          [style.top.px]="tip.y"
+          (mouseenter)="clearAvailTipTimer()"
+          (mouseleave)="scheduleHideAvailTip()"
+        >
+          <div class="tip-head">
+            <span class="grade-tag" [style.background]="grades()[tip.engineer.grade].color">{{ tip.engineer.grade }}</span>
+            <strong>{{ tip.engineer.name }}</strong>
+          </div>
+          <div class="tip-sub">{{ tip.team?.name ?? 'Unassigned team' }} · {{ tip.inCapacity ? 'In capacity' : 'Not in capacity' }}</div>
+          <div class="tip-cap">
+            <span>{{ tip.used }} / {{ tip.avail }} sprints allocated</span>
+            <b [class.over]="tip.pct > 100">{{ tip.pct }}%</b>
+          </div>
+          @if (tip.allocations.length) {
+            <div class="tip-sub">This quarter</div>
+            <ul class="tip-allocs">
+              @for (a of tip.allocations; track a.slotId) {
+                <li>
+                  <span class="dot" [style.background]="a.color"></span>
+                  <span class="a-name">{{ a.projectName }}</span>
+                  <span class="a-win">S{{ a.start + 1 }}–S{{ a.start + a.sprints }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="tip-empty">No current allocations in {{ store.selectedQuarter().label }}.</p>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="lane-body">
+      <!-- Owned work -->
+      <div class="col col-work">
+        <h4 class="owned-h">Accountable for</h4>
+        <div class="work-list">
+          @for (item of owned(); track item.project.id) {
+            <app-work-item [item]="item" [px]="px()" [zoom]="zoom()" [connectedTo]="connectedTo()" (dropped)="onDrop($event)" />
+          } @empty {
+            <p class="hint">No accountable work</p>
+          }
+        </div>
+      </div>
+
+      <!-- Supporting work (only once the team has some) -->
+      @if (supporting().length) {
+        <div class="col col-work">
+          <h4 class="support-h">Supporting work</h4>
+          <div class="work-list">
+            @for (item of supporting(); track item.project.id) {
+              <app-work-item [item]="item" [px]="px()" [zoom]="zoom()" [connectedTo]="connectedTo()" (dropped)="onDrop($event)" />
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (ctxMenu(); as menu) {
+      <div
+        class="ctx-menu"
+        [style.zoom]="(1 / zoom()).toString()"
+        [style.left.px]="menu.x"
+        [style.top.px]="menu.y"
+        (click)="$event.stopPropagation()"
+        (contextmenu)="$event.preventDefault(); $event.stopPropagation()"
+      >
+        <div class="ctx-head">Add {{ menu.engineerName }} to…</div>
+        @for (seat of menu.seats; track seat.slotId) {
+          <button type="button" (click)="assignFromMenu(seat)">
+            <span class="ctx-name">{{ seat.projectName }}</span>
+            <span class="ctx-meta">{{ seat.size }} · {{ seat.grades }} · {{ seat.sprints }}S</span>
+          </button>
+        }
+      </div>
+    }
+
+    @if (removeConfirm(); as c) {
+      <div
+        class="lane-confirm"
+        [style.zoom]="(1 / zoom()).toString()"
+        [style.left.px]="c.x"
+        [style.top.px]="c.y"
+        (click)="$event.stopPropagation()"
+        (contextmenu)="$event.preventDefault(); $event.stopPropagation()"
+      >
+        <h3>Remove from quarter?</h3>
+        @if (pendingMember(); as eng) {
+          <div class="lc-engineer">
+            <span class="grade-tag" [style.background]="grades()[eng.grade].color">{{ eng.grade }}</span>
+            <strong>{{ eng.name }}</strong>
+            <span class="lc-meta">{{ team.name }}</span>
+          </div>
+        }
+        @if (pendingMemberAllocs().length) {
+          <div class="lc-allocs">
+            <span class="lc-label">Board placements to be cleared:</span>
+            @for (a of pendingMemberAllocs(); track a.slotId) {
+              <span class="lc-chip">
+                <span class="lc-dot" [style.background]="a.color"></span>
+                {{ a.projectName }} · S{{ a.start + 1 }}–S{{ a.start + a.sprints }}
+              </span>
+            }
+          </div>
+        }
+        <p class="lc-note">
+          The engineer is removed from {{ team.name }}'s capacity for
+          {{ store.selectedQuarter().label }} and any engineer seat they hold on
+          the Planning Board is freed. Click the row again in the Teams panel to
+          re-add them.
+        </p>
+        <footer>
+          <button type="button" class="lc-btn" (click)="removeConfirm.set(null)">Cancel</button>
+          <button type="button" class="lc-btn danger" (click)="removeMember()">Remove from quarter</button>
+        </footer>
+      </div>
+    }
+  </section>
+}

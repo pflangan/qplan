@@ -1,0 +1,85 @@
+<button
+  type="button"
+  class="sliver"
+  (click)="store.setPanelsExpanded(store.projectsExpanded(), true)"
+  appTip="Expand On Call panel"
+>
+  <span class="sliver-icon">☎</span>
+  <span class="sliver-label">On Call</span>
+</button>
+
+<div class="panel-header">
+  <div class="header-side">
+    <button
+      type="button"
+      class="collapse-btn"
+      (click)="store.setPanelsExpanded(store.projectsExpanded(), false)"
+      appTip="Collapse On Call panel"
+    >»</button>
+    <h2>On Call / Code Owners</h2>
+  </div>
+  <span class="count">{{ store.teams().length }}</span>
+</div>
+
+<div class="add-row">
+  <input
+    type="text"
+    placeholder="New team…"
+    [ngModel]="newName()"
+    (ngModelChange)="newName.set($event)"
+    (keyup.enter)="add()"
+  />
+  <button type="button" class="add-btn" (click)="add()" appTip="Add team">+</button>
+</div>
+
+<div class="import-row">
+  <button
+    type="button"
+    class="import-btn"
+    (click)="fileInput.click()"
+    appTip="Import teams & engineers from a file"
+    appTipDetail='JSON: [{"name":"Platform","engineers":[{"name":"Jane","grade":"G5"}]}] · CSV: Team,Engineer,Grade rows'
+  >
+    Import
+  </button>
+  <input
+    #fileInput
+    type="file"
+    accept=".json,.csv,application/json,text/csv"
+    class="file-input"
+    (change)="importFile($event)"
+  />
+  <button
+    type="button"
+    class="paste-btn"
+    (click)="togglePaste()"
+    appTip="Paste JSON or CSV text to import teams"
+  >
+    Paste…
+  </button>
+</div>
+
+@if (showPaste()) {
+  <div class="paste-row">
+    <textarea
+      rows="5"
+      placeholder='Paste JSON or CSV here…&#10;JSON: [{"name":"Platform","engineers":[{"name":"Jane","grade":"G5"}]}]&#10;CSV: Team,Engineer,Grade'
+      [ngModel]="pasteText()"
+      (ngModelChange)="pasteText.set($event)"
+    ></textarea>
+    <div class="paste-actions">
+      <button type="button" class="do-import" (click)="importPasted()" [disabled]="!pasteText().trim()">
+        Import
+      </button>
+      <button type="button" class="cancel" (click)="togglePaste()">Cancel</button>
+    </div>
+  </div>
+}
+
+<div class="teams">
+  @for (team of store.teams(); track team.id) {
+    <app-team-card [teamId]="team.id" />
+  } @empty {
+    <p class="empty">No teams yet.<br />Add a Code Owner group above.</p>
+  }
+</div>

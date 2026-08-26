@@ -1,0 +1,178 @@
+<div class="overlay" (click)="closed.emit()">
+  <div class="dialog" (click)="$event.stopPropagation()" (keydown.escape)="closed.emit()">
+    <h2>Settings</h2>
+
+    <section class="section">
+      <h3>T-shirt sizes</h3>
+      <div class="size-table">
+        <div class="size-row size-head">
+          <span></span>
+          <span></span>
+          <span>Engineers</span>
+          <span>Sprints</span>
+          <span></span>
+        </div>
+        @for (row of draftSizes(); track row.id; let i = $index) {
+          <div class="size-row" [style.--size-color]="row.color">
+            <span class="cell-color">
+              <button
+                type="button"
+                class="swatch"
+                [style.background]="row.color"
+                (click)="togglePalette('size-' + row.id); $event.stopPropagation()"
+              ></button>
+              @if (paletteOpen() === 'size-' + row.id) {
+                <div class="palette" (click)="$event.stopPropagation()">
+                  @for (c of palette; track c) {
+                    <button
+                      type="button"
+                      class="pal"
+                      [style.background]="c"
+                      [class.active]="row.color === c"
+                      (click)="pickColor('size-' + row.id, c)"
+                    ></button>
+                  }
+                </div>
+              }
+            </span>
+            <span class="size-chip">{{ row.id }}</span>
+            <app-number-pills
+              [value]="row.engineers"
+              [min]="1"
+              [max]="12"
+              (changed)="setDraftEngineers(i, $event)"
+            />
+            <app-number-pills
+              [value]="row.sprints"
+              [min]="1"
+              [max]="maxSprints()"
+              (changed)="setDraftSprints(i, $event)"
+            />
+            <span class="size-total" title="Person-sprints (engineers × sprints)">
+              = {{ row.engineers * row.sprints }}
+            </span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="section">
+      <h3>Grade colors</h3>
+      <div class="grade-table">
+        @for (g of gradeIds; track g) {
+          <div class="grade-row">
+            <span class="cell-color">
+              <button
+                type="button"
+                class="swatch"
+                [style.background]="draftGradeColors()[g]"
+                (click)="togglePalette('grade-' + g); $event.stopPropagation()"
+              ></button>
+              @if (paletteOpen() === 'grade-' + g) {
+                <div class="palette" (click)="$event.stopPropagation()">
+                  @for (c of palette; track c) {
+                    <button
+                      type="button"
+                      class="pal"
+                      [style.background]="c"
+                      [class.active]="draftGradeColors()[g] === c"
+                      (click)="pickColor('grade-' + g, c)"
+                    ></button>
+                  }
+                </div>
+              }
+            </span>
+            <span class="grade-chip" [style.background]="draftGradeColors()[g]">{{ g }}</span>
+            <span class="grade-label">{{ grades[g].label }}</span>
+
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="section">
+      <h3>Planning dates</h3>
+      <div class="field">
+        <span>Start from</span>
+        <div class="pill-group" role="group" aria-label="Start from quarter">
+          @for (q of quarters; track q) {
+            <button
+              type="button"
+              class="pill"
+              [class.selected]="draftStartQuarter() === q"
+              (click)="draftStartQuarter.set(q)"
+            >{{ q }}</button>
+          }
+        </div>    <label class="field">
+        <span class="field-inline">
+          <input
+            type="date"
+            [ngModel]="draftStart()"
+            (ngModelChange)="draftStart.set($event)"
+          />
+          @if (draftStart()) {
+            <button type="button" class="clear-btn" (click)="clearStart()" title="Clear date">×</button>
+          }
+        </span>
+      </label>
+      </div>
+
+      <div class="field">
+        <span
+          title="How each following quarter's start date chains from the previous quarter's end"
+        >Subsequent quarters start</span>
+        <div class="pill-group" role="group" aria-label="Subsequent quarters start on">
+          <button
+            type="button"
+            class="pill"
+            [class.selected]="draftChain() === 'same'"
+            (click)="draftChain.set('same')"
+          >Same business day</button>
+          <button
+            type="button"
+            class="pill"
+            [class.selected]="draftChain() === 'next'"
+            (click)="draftChain.set('next')"
+          >Next business day</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span>Sprint length</span>
+        <div class="pill-group" role="group" aria-label="Sprint length in weeks">
+          @for (n of sprintLengths; track n) {
+            <button
+              type="button"
+              class="pill"
+              [class.selected]="draftLength() === n"
+              (click)="draftLength.set(n)"
+            >{{ n }}w</button>
+          }
+        </div>
+      </div>
+      <label class="check">
+        <input
+          type="checkbox"
+          [ngModel]="draftShowDates()"
+          (ngModelChange)="draftShowDates.set($event)"
+        />
+        <span>Show date labels on the board</span>
+      </label>
+    </section>
+
+    <footer class="footer">
+      <button
+        type="button"
+        class="btn reset"
+        (click)="resetDefaults()"
+        appTip="Restore all settings to their default values"
+      >Reset to defaults</button>
+      @if (!firstRun()) {
+        <button type="button" class="btn" (click)="closed.emit()">Cancel</button>
+      }
+      <button type="button" class="btn primary" (click)="save()">
+        {{ firstRun() ? 'Get started' : 'Save' }}
+      </button>
+    </footer>
+  </div>
+</div>

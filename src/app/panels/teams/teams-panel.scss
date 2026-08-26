@@ -1,0 +1,277 @@
+:host {
+  display: flex;
+  flex-direction: column;
+
+  // Collapsed: hide the full panel, show the 44px sliver rail
+  &.collapsed > :not(.sliver) {
+    display: none;
+  }
+}
+
+// Icon sliver shown while the sidebar is collapsed from the navbar edge toggle
+.sliver {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  flex: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 14px 0;
+  font: inherit;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f1f5f9;
+
+    .sliver-icon,
+    .sliver-label {
+      color: #6366f1;
+    }
+  }
+
+  .sliver-icon {
+    font-size: 16px;
+    color: #64748b;
+    line-height: 1;
+  }
+
+  .sliver-label {
+    writing-mode: vertical-rl;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+}
+
+:host.collapsed .sliver {
+  display: flex;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 8px;
+
+  h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #64748b;
+  }
+
+  .header-side {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .collapse-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+      border-color: #6366f1;
+      background: #eef2ff;
+      color: #4f46e5;
+    }
+  }
+
+  .count {
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+}
+
+.add-row {
+  display: flex;
+  gap: 6px;
+  padding: 4px 16px 12px;
+  border-bottom: 1px solid #f1f5f9;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+
+    &:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+  }
+
+  .add-btn {
+    width: 32px;
+    border: none;
+    border-radius: 8px;
+    background: #6366f1;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover {
+      background: #4f46e5;
+    }
+  }
+}
+
+.import-row {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 12px;
+
+  .import-btn {
+    flex: 1;
+    border: 1px dashed #c7d2fe;
+    border-radius: 8px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+      background: #e0e7ff;
+      border-color: #6366f1;
+    }
+  }
+
+  .paste-btn {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+      border-color: #6366f1;
+      color: #4f46e5;
+    }
+  }
+
+  .file-input {
+    display: none;
+  }
+}
+
+.paste-row {
+  padding: 0 16px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  textarea {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    color: #0f172a;
+    outline: none;
+    resize: vertical;
+    line-height: 1.5;
+
+    &:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+  }
+
+  .paste-actions {
+    display: flex;
+    gap: 6px;
+
+    .do-import {
+      flex: 1;
+      border: none;
+      border-radius: 8px;
+      background: #6366f1;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 0;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: #4f46e5;
+      }
+
+      &:disabled {
+        background: #e2e8f0;
+        color: #475569;
+        cursor: not-allowed;
+      }
+    }
+
+    .cancel {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 12px;
+      cursor: pointer;
+
+      &:hover {
+        background: #f1f5f9;
+      }
+    }
+  }
+}
+
+.teams {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empty {
+  text-align: center;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 24px;
+}

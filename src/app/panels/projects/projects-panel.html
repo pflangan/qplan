@@ -1,0 +1,91 @@
+<button
+  type="button"
+  class="sliver"
+  (click)="store.setPanelsExpanded(true, store.onCallExpanded())"
+  appTip="Expand Projects panel"
+>
+  <span class="sliver-icon">▤</span>
+  <span class="sliver-label">Projects</span>
+</button>
+
+<div class="panel-header">
+  <h2>Projects</h2>
+  <div class="header-side">
+    <span class="count">{{ store.projects().length }}</span>
+    <button
+      type="button"
+      class="collapse-btn"
+      (click)="store.setPanelsExpanded(false, store.onCallExpanded())"
+      appTip="Collapse Projects panel"
+    >«</button>
+  </div>
+</div>
+
+<div class="add-row">
+  <input
+    type="text"
+    placeholder="New project…"
+    [ngModel]="newName()"
+    (ngModelChange)="newName.set($event)"
+    (keyup.enter)="add()"
+  />
+  <button type="button" class="add-btn" (click)="add()" appTip="Add project">+</button>
+</div>
+
+<div class="import-row">
+  <button
+    type="button"
+    class="import-btn"
+    (click)="fileInput.click()"
+    appTip="Import projects from a file"
+    appTipDetail='JSON: [{"name":"Payments","size":"M"}] · CSV: Title,Size rows'
+  >
+    Import
+  </button>
+  <input
+    #fileInput
+    type="file"
+    accept=".json,.csv,application/json,text/csv"
+    class="file-input"
+    (change)="importFile($event)"
+  />
+  <button
+    type="button"
+    class="paste-btn"
+    (click)="togglePaste()"
+    appTip="Paste JSON or CSV text to import projects"
+  >
+    Paste…
+  </button>
+</div>
+
+@if (showPaste()) {
+  <div class="paste-row">
+    <textarea
+      rows="5"
+      placeholder='Paste JSON or CSV here…&#10;JSON: [{"name":"Payments","size":"M"}]&#10;CSV: Title,Size'
+      [ngModel]="pasteText()"
+      (ngModelChange)="pasteText.set($event)"
+    ></textarea>
+    <div class="paste-actions">
+      <button type="button" class="do-import" (click)="importPasted()" [disabled]="!pasteText().trim()">
+        Import
+      </button>
+      <button type="button" class="cancel" (click)="togglePaste()">Cancel</button>
+    </div>
+  </div>
+}
+
+<div
+  class="cards"
+  id="project-pool"
+  cdkDropList
+  cdkDropListSortingDisabled
+  [cdkDropListConnectedTo]="laneListIds()"
+>
+  @for (project of store.projects(); track project.id) {
+    <app-project-card [projectId]="project.id" />
+  } @empty {
+    <p class="empty">No projects yet.<br />Add one above, then size it.</p>
+  }
+</div>
