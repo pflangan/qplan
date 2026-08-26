@@ -63,7 +63,7 @@
     <div class="sprint-ruler" aria-hidden="true">
 
       @for (s of sprintNos(); track s; let i = $index) {
-        <span class="ruler-cell" [style.width.px]="px()">
+        <span class="ruler-cell">
           S{{ s }}
           @if (sprintDates()[i] && px() >= 30) {
             <span class="ruler-date">{{ sprintDates()[i] }}</span>
@@ -108,26 +108,18 @@
                 ℹ
               </button>
               <span class="line-name">{{ m.engineer.name }}</span>
-              <div class="sprints-ctrl" (click)="$event.stopPropagation()">
-                <button type="button" (click)="setSprints(m.engineer.id, m.sprints - 1)" appTip="Available one fewer sprint">−</button>
-                <span class="sprints" [appTip]="m.sprints + ' of ' + quarterSprints() + ' sprints available'">
-                  {{ m.sprints }}
-                </span>
-                <button type="button" (click)="setSprints(m.engineer.id, m.sprints + 1)" appTip="Available one more sprint">+</button>
-                <button type="button" class="rm" (click)="askRemoveMember($event, m.engineer.id)" appTip="Remove from quarter">✕</button>
-              </div>
             </div>
             <div class="cap-line">
-              <div class="cap-ticks" [style.width.px]="quarterSprints() * px()">
+              <div class="cap-ticks">
                 @for (s of sprintNos(); track s; let i = $index) {
-                  <span class="tick" [style.left.px]="i * px()"></span>
+                  <span class="tick" [style.left.%]="(i / quarterSprints()) * 100"></span>
                 }
                 <div class="cap-track">
                   @for (a of store.allocationsOf(m.engineer.id); track a.slotId) {
                     <div
                       class="cap-seg"
-                      [style.left.px]="a.start * px()"
-                      [style.width.px]="a.sprints * px()"
+                      [style.left.%]="(a.start / quarterSprints()) * 100"
+                      [style.width.%]="(a.sprints / quarterSprints()) * 100"
                       [style.background]="a.color"
                       [appTip]="a.projectName + ': S' + (a.start + 1) + '–S' + (a.start + a.sprints)"
                     ></div>
@@ -135,14 +127,14 @@
                   @if (quarterSprints() > m.sprints) {
                     <div
                       class="cap-gray"
-                      [style.left.px]="m.sprints * px()"
-                      [style.width.px]="(quarterSprints() - m.sprints) * px()"
+                      [style.left.%]="(m.sprints / quarterSprints()) * 100"
+                      [style.width.%]="((quarterSprints() - m.sprints) / quarterSprints()) * 100"
                       [appTip]="'Not available beyond sprint ' + m.sprints"
                     ></div>
                   }
                 </div>
               </div>
-              <span class="cap-pct" [class.over]="pctOf(m.sprints, m.engineer.id) > 100" appTip="% of available sprints allocated">{{ pctOf(m.sprints, m.engineer.id) }}</span>
+              <span class="cap-pct" [class.over]="pctOf(m.sprints, m.engineer.id) > 100" appTip="% of available sprints allocated">{{ pctOf(m.sprints, m.engineer.id) }}%</span>
 
             </div>
             <!-- Compact drag preview: grade tag + name only. Mirrors the

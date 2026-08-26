@@ -332,10 +332,6 @@ export class TeamLane {
     return this.store.gradeColor(grade as Grade) ?? '#94a3b8';
   }
 
-  setSprints(engineerId: string, sprints: number): void {
-    this.store.setSprints(this.teamId(), engineerId, sprints);
-  }
-
   /** Header grabbed: hand the pointer to the board's lane drag. */
   onHeadPointerDown(event: PointerEvent): void {
     if (this.layoutMode() === 'fixed' || event.button !== 0) return;

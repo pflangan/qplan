@@ -327,6 +327,46 @@
     white-space: nowrap;
   }
 
+  .sprints-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: auto;
+    flex-shrink: 0;
+
+    button {
+      width: 17px;
+      height: 17px;
+      border: none;
+      border-radius: 5px;
+      background: transparent;
+      color: #475569;
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+
+      &:hover:not(:disabled) {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+
+      &:disabled {
+        color: #cbd5e1;
+        cursor: not-allowed;
+      }
+    }
+
+    .sprints {
+      min-width: 16px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+    }
+  }
+
   .grade-select {
     border: none;
     background: transparent;

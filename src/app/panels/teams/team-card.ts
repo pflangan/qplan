@@ -130,6 +130,10 @@ export class TeamCard {
     this.store.setEngineerGrade(this.teamId(), engineerId, grade as Grade);
   }
 
+  setSprints(engineerId: string, sprints: number): void {
+    this.store.setSprints(this.teamId(), engineerId, sprints);
+  }
+
   /** Engineer pending removal in the confirm dialog; null when closed. */
   readonly pendingEngineer = computed(() => {
     const id = this.pendingEngineerId();

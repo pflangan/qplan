@@ -48,7 +48,6 @@
           (mouseenter)="showEngTip($event, e.id)"
           (mouseleave)="scheduleHideTip()"
         >
-          <span class="eng-name">{{ e.name }}</span>
           <select
             class="grade-select"
             [ngModel]="e.grade"
@@ -62,6 +61,25 @@
               <option [ngValue]="g.key">{{ g.key }} · {{ g.value.label }}</option>
             }
           </select>
+          <span class="eng-name">{{ e.name }}</span>
+          <div class="sprints-ctrl" (click)="$event.stopPropagation()">
+            <button
+              type="button"
+              [disabled]="!store.isInCapacity(e.id)"
+              (click)="setSprints(e.id, store.availSprintsOf(teamId(), e.id) - 1)"
+              appTip="Available one fewer sprint"
+            >−</button>
+            <span
+              class="sprints"
+              [appTip]="store.availSprintsOf(teamId(), e.id) + ' of ' + store.selectedQuarter().sprints + ' sprints available'"
+            >{{ store.availSprintsOf(teamId(), e.id) }}</span>
+            <button
+              type="button"
+              [disabled]="!store.isInCapacity(e.id)"
+              (click)="setSprints(e.id, store.availSprintsOf(teamId(), e.id) + 1)"
+              appTip="Available one more sprint"
+            >+</button>
+          </div>
           <button
             type="button"
             class="icon-btn remove-eng"

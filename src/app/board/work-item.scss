@@ -154,17 +154,19 @@
 
 .track {
   position: relative;
+  // --track-tick-color: color-mix(in srgb, var(--team-color) 88.7%, #cccccc);
+  --track-tick-color: rgba(0,0,0,0.3);
   // Never shrink below the quarter width: when the lane is squeezed,
   // the board scrolls instead of crushing the sprint grid.
   flex-shrink: 0;
   border-radius: 6px;
   // Light gray bed stays visible after an engineer is assigned so the
   // sprint ticks remain readable while dragging the bar to reposition.
-  background-color: #f8fafc;
+  background-color: rgba(0,0,0,0.1);
   background-image: repeating-linear-gradient(
     to right,
-    #eef2f7 0,
-    #eef2f7 1px,
+    var(--track-tick-color) 0,
+    var(--track-tick-color) 1px,
     transparent 1px,
     transparent var(--px, 36px)
   );

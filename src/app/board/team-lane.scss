@@ -89,17 +89,19 @@
 .sprint-ruler {
   display: flex;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
   padding: 6px 12px 2px;
   background: color-mix(in srgb, var(--team-color) 3%, white);
 
   .ruler-gutter {
-    width: 48px; // sync with .slot-label (work-item) and .cap-pct below
+    width: 20px;
     flex-shrink: 0;
   }
 
   .ruler-cell {
-    // Width bound inline to the lane's dynamic sprint-cell px.
-    flex-shrink: 0;
+    flex: 1 1 0;
+    min-width: 0;
     text-align: center;
     font-size: 10px;
     font-weight: 700;
@@ -357,49 +359,6 @@
     text-overflow: ellipsis;
   }
 
-  .sprints-ctrl {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    margin-left: auto;
-    flex-shrink: 0;
-
-    button {
-      width: 17px;
-      height: 17px;
-      border: none;
-      border-radius: 5px;
-      background: transparent;
-      color: #475569;
-      font-size: 13px;
-      line-height: 1;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
-
-      &:hover {
-        background: #e2e8f0;
-        color: #0f172a;
-      }
-
-      &.rm {
-        font-size: 11px;
-
-        &:hover {
-          background: #fee2e2;
-          color: #ef4444;
-        }
-      }
-    }
-
-    .sprints {
-      font-size: 12px;
-      font-weight: 700;
-      color: #0f172a;
-      // min-width: 24px;
-      text-align: center;
-    }
-  }
 }
 
 .avail-tip {
@@ -525,12 +484,15 @@
   display: flex;
   align-items: center;
   height: 12px;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 -4px;
+  --cap-structure-color: color-mix(in srgb, var(--team-color) 21.7%, #0f172a);
 
   .cap-pct {
-    width: 48px; // sync with .slot-label (work-item) and .ruler-gutter above
+    width: 20px;
     flex-shrink: 0;
-    padding-right: 6px;
+    padding-right: 2px;
     text-align: right;
     font-size: 10px;
     font-weight: 700;
@@ -545,13 +507,15 @@
   .cap-ticks {
     position: relative;
     height: 12px;
+    flex: 1 1 0;
+    min-width: 0;
 
     .tick {
       position: absolute;
       top: 0;
       bottom: 0;
       width: 1px;
-      background: #cbd5e1;
+      background: var(--cap-structure-color);
     }
   }
 
@@ -562,7 +526,7 @@
     right: 0;
     height: 6px;
     border-radius: 3px;
-    background: #bed2d7;
+    background: color-mix(in srgb, var(--cap-structure-color) 55%, white);
     overflow: hidden;
   }
 
@@ -804,8 +768,7 @@
 // Safety net: if CDK ever falls back to cloning the full row as the preview,
 // strip it down to grade + name so the drag ghost stays tidy.
 .engineer-line.cdk-drag-preview {
-  .cap-line,
-  .sprints-ctrl {
+  .cap-line {
     display: none;
   }
 }
