@@ -31,7 +31,7 @@ export class RichTip implements OnDestroy {
   private pointerY: number | null = null;
 
   private readonly suppressOnDrag = effect(() => {
-    if (this.store.drag() || this.store.projectDrag()) {
+    if (this.store.drag()) {
       this.clearTimer();
       this.destroyPanel();
     }
@@ -58,7 +58,7 @@ export class RichTip implements OnDestroy {
   }
 
   show(event?: MouseEvent | FocusEvent): void {
-    if (this.store.drag() || this.store.projectDrag()) return;
+    if (this.store.drag()) return;
     if (event instanceof MouseEvent) {
       this.pointerX = event.clientX;
       this.pointerY = event.clientY;

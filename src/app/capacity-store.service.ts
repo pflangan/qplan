@@ -602,20 +602,29 @@ export class CapacityStore {
   }
 
   /**
-   * After availability shrinks (or the quarter shortens), re-place each of the
-   * engineer's allocations at their first still-valid window; unassign + toast
-   * when nothing fits.
+   * After availability shrinks (or the quarter shortens), keep each of the
+   * engineer's allocations that still fits where it is; re-place the rest at
+   * their first still-valid window; unassign + toast when nothing fits.
    */
   private replaceOrUnassign(engineerId: string): void {
     const engineer = this.engineerById(engineerId);
+    const quarter = this.selectedQuarter().sprints;
     for (const alloc of this.allocationsOf(engineerId)) {
+      const taken = this.allocationsOf(engineerId).filter(
+        (a) => a.slotId !== alloc.slotId,
+      );
+      const fitsAt = (s: number) =>
+        s >= 0 &&
+        s + alloc.sprints <= quarter &&
+        !taken.some((a) => s < a.start + a.sprints && a.start < s + alloc.sprints);
+      if (fitsAt(alloc.start)) continue; // placement still valid — leave it be
       const start = this.firstFreeStart(engineerId, alloc.sprints, alloc.slotId);
-      if (start !== null && start !== alloc.start) {
+      if (start !== null) {
         this.assignments.update((a) => ({
           ...a,
           [alloc.slotId]: { engineerId, start, sprints: alloc.sprints },
         }));
-      } else if (start === null) {
+      } else {
         this.unassignSlot(alloc.slotId);
         this.showToast(
           `${engineer?.name ?? 'Engineer'} has no free window of ${alloc.sprints} consecutive sprints — unassigned`,
@@ -943,50 +952,6 @@ export class CapacityStore {
     });
   }
 
-  /**
-   * Drag-and-drop: every seat moves to the target team (drag = "this team
-   * delivers it") and the project joins the board — or, when already boarded,
-   * re-targets to the new team. Assignments held by engineers outside the
-   * new team are dropped; the rest survive the move. Over-capacity drops
-   * are allowed — the risk is flagged in the toast and on the lane's squares.
-   */
-  addProjectToTeam(projectId: string, teamId: string): void {
-    const project = this.projects().find((s) => s.id === projectId);
-    const team = this.team(teamId);
-    if (!project || !team) return;
-    const moving = project.onBoard;
-    if (!moving && !this.canAddToBoard(project)) {
-      this.showToast('Pick a size and a team for every engineer first');
-      return;
-    }
-    this.projects.update((projects) =>
-      projects.map((s) =>
-        s.id === projectId
-          ? {
-              ...s,
-              onBoard: true,
-              accountableTeamId: teamId,
-              slots: s.slots.map((slot) => ({ ...slot, teamId })),
-            }
-          : s,
-      ),
-    );
-    const updated = this.projects().find((s) => s.id === projectId);
-    for (const slot of updated?.slots ?? []) {
-      this.clearAssignmentForSlot(slot.id, teamId);
-    }
-    const committed = this.workItemsFor(teamId).reduce(
-      (sum, w) => sum + w.slots.length * this.slotSprints(w.project),
-      0,
-    );
-    const total = this.membersOf(teamId).reduce((sum, m) => sum + m.sprints, 0);
-    const over = Math.max(0, committed - total);
-    this.showToast(
-      `"${project.name}" ${moving ? 'moved to' : 'added to'} ${team.name}` +
-        (over > 0 ? ` — over capacity by ${over} sprints` : ''),
-    );
-  }
-
   /** Work items for a team lane: on-board projects that have at least one slot from that team. */
   workItemsFor(teamId: string): WorkItem[] {
     const assignments = this.assignments();
@@ -1030,17 +995,6 @@ export class CapacityStore {
 
   dragEnded(): void {
     this.drag.set(null);
-  }
-
-  /** Project being dragged from the planning panel, for lane previews. */
-  readonly projectDrag = signal<{ projectId: string } | null>(null);
-
-  projectDragStarted(projectId: string): void {
-    this.projectDrag.set({ projectId });
-  }
-
-  projectDragEnded(): void {
-    this.projectDrag.set(null);
   }
 
   /** All sprint windows an engineer is currently allocated to (colored by project color). */

@@ -1,6 +1,5 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CdkDropList } from '@angular/cdk/drag-drop';
 import { CapacityStore } from '../../capacity-store.service';
 import { SIZE_IDS, SizeId } from '../../models';
 import { RichTip } from '../../rich-tip.directive';
@@ -13,7 +12,7 @@ interface ProjectImport {
 
 @Component({
   selector: 'app-projects-panel',
-  imports: [CdkDropList, FormsModule, ProjectCard, RichTip],
+  imports: [FormsModule, ProjectCard, RichTip],
   host: { '[class.collapsed]': 'collapsed()' },
   templateUrl: './projects-panel.html',
   styleUrl: './projects-panel.scss',
@@ -25,15 +24,6 @@ export class ProjectsPanel {
   readonly newName = signal('');
   readonly showPaste = signal(false);
   readonly pasteText = signal('');
-
-  /**
-   * Lane drop-list ids on the board. CDK only moves a dragged card into
-   * containers that are siblings of the list it started in, so the panel's
-   * card list must be connected to every team lane.
-   */
-  readonly laneListIds = computed(() =>
-    this.store.teams().map((t) => `lane-${t.id}`),
-  );
 
   add(): void {
     this.store.addProject(this.newName());

@@ -60,7 +60,7 @@
               <app-team-lane
                 [class.fixed]="layoutMode() === 'fixed'"
                 [teamId]="team.id"
-                [px]="px"
+                [px]="px()"
                 [zoom]="zoom()"
                 [layoutMode]="layoutMode()"
                 (headerDragStart)="onHeaderDragStart($event, team.id)"
@@ -76,6 +76,7 @@
         <button type="button" class="pct" (click)="resetZoom()" appTip="Reset zoom to 100% (⌘0)">{{ zoomPct() }}</button>
         <button type="button" (click)="zoomStep(1)" appTip="Zoom in (⌘+)">+</button>
         <button type="button" (click)="fit()" class="fit">Fit</button>
+        <button type="button" (click)="tidy()" class="fit" appTip="Line up all lanes, then fit">Tidy</button>
       </div>
     }
   } @else {

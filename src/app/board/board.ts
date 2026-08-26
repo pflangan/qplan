@@ -12,7 +12,7 @@ import {
   viewChildren,
 } from '@angular/core';
 import { CapacityStore } from '../capacity-store.service';
-import { PX_PER_SPRINT_X } from '../models';
+import { TRACK_W } from '../models';
 import { RichTip } from '../rich-tip.directive';
 import { TeamLane } from './team-lane';
 
@@ -61,8 +61,8 @@ export class Board {
   readonly store = inject(CapacityStore);
   readonly layoutMode = input.required<'canvas' | 'fixed'>();
 
-  /** Sprint-cell width — fixed; the canvas is zoomed/panned instead. */
-  readonly px = PX_PER_SPRINT_X;
+  /** Sprint-cell width: fixed track width spread across the quarter's sprints. */
+  readonly px = computed(() => TRACK_W / this.store.selectedQuarter().sprints);
 
   readonly viewportEl = viewChild<ElementRef<HTMLElement>>('viewportEl');
   readonly laneEls = viewChildren<ElementRef<HTMLElement>>('laneSlot');
@@ -161,10 +161,10 @@ export class Board {
       onCleanup(() => el.removeEventListener('wheel', onWheel));
     });
 
-    // While CDK drags an engineer chip or project card, track the pointer for
-    // edge auto-pan (the drag signals gate this listener).
+    // While CDK drags an engineer chip, track the pointer for edge auto-pan
+    // (the drag signal gates this listener).
     const onDragPointerMove = (e: PointerEvent): void => {
-      if (!this.store.drag() && !this.store.projectDrag()) return;
+      if (!this.store.drag()) return;
       this.setEdgePointer(e.clientX, e.clientY);
       this.startEdgePan('cdk');
     };
@@ -335,7 +335,7 @@ export class Board {
     const mode = this.edgePanMode;
     if (!mode) return;
     // CDK clears its drag signals on pointerup — that's our stop signal.
-    if (mode === 'cdk' && !this.store.drag() && !this.store.projectDrag()) {
+    if (mode === 'cdk' && !this.store.drag()) {
       this.edgePanMode = null;
       return;
     }
@@ -526,6 +526,18 @@ export class Board {
       (vw - (maxX - minX) * z) / 2 - minX * z,
       16,
     );
+  }
+
+  /** Line up all lanes left-to-right with a small gap, tops aligned, then fit. */
+  tidy(): void {
+    if (this.layoutMode() === 'fixed') return;
+    const sizes = this.laneSizes();
+    let x = 0;
+    for (const t of this.store.teams()) {
+      this.store.setLanePosition(t.id, { x, y: 0 });
+      x += (sizes[t.id]?.w ?? LANE_FALLBACK_W) + LANE_GAP;
+    }
+    this.fit();
   }
 
   // ---- Group ribbon (unchanged stats) ----

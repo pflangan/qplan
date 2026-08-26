@@ -3,10 +3,6 @@
     class="card"
     [class.on-board]="project.onBoard"
     [style.border-color]="project.color || '#e2e8f0'"
-    cdkDrag
-    [cdkDragData]="{ kind: 'project', projectId: project.id }"
-    (cdkDragStarted)="store.projectDragStarted(project.id)"
-    (cdkDragEnded)="store.projectDragEnded()"
   >
     <div class="card-top">
       <button
@@ -46,15 +42,6 @@
         </button>
       }
       <div class="actions">
-        @if (draggable()) {
-          <button
-            type="button"
-            class="grip"
-            cdkDragHandle
-            appTip="Drag onto a team lane"
-            appTipDetail="Every engineer seat moves to that team"
-          >⠿</button>
-        }
         @if (project.onBoard) {
           <button
             type="button"
@@ -183,15 +170,6 @@
     @if (project.onBoard) {
       <p class="on-board-note">Planned - {{ teamName(store.effectiveAccountableTeamId(project)) }}</p>
     }
-
-    <!-- Compact drag preview: color dot + name + effort -->
-    <ng-template cdkDragPreview>
-      <div class="project-drag-chip">
-        <span class="chip-dot" [style.background]="project.color || '#94a3b8'"></span>
-        <span class="chip-name">{{ project.name }}</span>
-        <span class="chip-meta">{{ project.size }} · {{ total() }} person-sprints</span>
-      </div>
-    </ng-template>
 
     @if (confirmingOffBoard()) {
       <div class="confirm-overlay" (click)="confirmingOffBoard.set(false)">

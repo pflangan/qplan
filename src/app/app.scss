@@ -252,7 +252,7 @@ button {
 
 .layout {
   display: grid;
-  grid-template-columns: 300px 1fr 290px;
+  grid-template-columns: 330px 1fr 330px;
   gap: 14px;
   padding: 14px;
   flex: 1;
@@ -260,11 +260,11 @@ button {
 
   // Collapsed sidebars shrink to a 44px icon sliver (panel renders the rail)
   &.left-sliver {
-    grid-template-columns: 44px 1fr 290px;
+    grid-template-columns: 44px 1fr 330px;
   }
 
   &.right-sliver {
-    grid-template-columns: 300px 1fr 44px;
+    grid-template-columns: 330px 1fr 44px;
   }
 
   &.left-sliver.right-sliver {

@@ -76,13 +76,7 @@
   </div>
 }
 
-<div
-  class="cards"
-  id="project-pool"
-  cdkDropList
-  cdkDropListSortingDisabled
-  [cdkDropListConnectedTo]="laneListIds()"
->
+<div class="cards">
   @for (project of store.projects(); track project.id) {
     <app-project-card [projectId]="project.id" />
   } @empty {

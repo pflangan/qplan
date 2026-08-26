@@ -172,56 +172,6 @@
     }
   }
 
-  // Drag handle for dropping the project onto a team lane (see team-lane)
-  .grip {
-    background: transparent;
-    color: #94a3b8;
-    font-size: 14px;
-    cursor: grab;
-
-    &:hover {
-      background: #eef2f7;
-      color: #334155;
-    }
-
-    &:active {
-      cursor: grabbing;
-    }
-  }
-}
-
-// Compact chip shown while dragging the card over the board
-.project-drag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px 5px 7px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35);
-  cursor: grabbing;
-
-  .chip-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 3px;
-    flex-shrink: 0;
-  }
-
-  .chip-name {
-    font-size: 13px;
-    font-weight: 700;
-    color: #0f172a;
-    white-space: nowrap;
-  }
-
-  .chip-meta {
-    font-size: 11px;
-    font-weight: 600;
-    color: #475569;
-    white-space: nowrap;
-  }
 }
 
 .sizes {

@@ -46,7 +46,7 @@ export class TeamCard {
   private tipTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly hideEngTipOnDrag = effect(() => {
-    if (this.store.drag() || this.store.projectDrag()) {
+    if (this.store.drag()) {
       this.engTip.set(null);
     }
   });
@@ -68,7 +68,7 @@ export class TeamCard {
   });
 
   showEngTip(event: MouseEvent, engineerId: string): void {
-    if (this.store.drag() || this.store.projectDrag()) return;
+    if (this.store.drag()) return;
     this.clearTipTimer();
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     this.tipTimer = setTimeout(() => {

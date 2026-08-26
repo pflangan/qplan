@@ -2,14 +2,6 @@
   <section
     class="lane"
     [style.--team-color]="team.color"
-    [id]="laneListId()"
-    cdkDropList
-    [cdkDropListEnterPredicate]="projectPredicate"
-    (cdkDropListEntered)="projectHover.set(true)"
-    (cdkDropListExited)="projectHover.set(false)"
-    (cdkDropListDropped)="onDrop($event)"
-    [class.project-hover]="hoveredProject()"
-    [class.project-over]="hoveredProject() && overSprints() > 0"
   >
     <header class="lane-head" (pointerdown)="onHeadPointerDown($event)">
       <div class="name-row">
@@ -43,8 +35,7 @@
             class="sq"
             [class.open]="c.state === 'open'"
             [class.filled]="c.state === 'filled'"
-            [class.preview]="c.state === 'preview'"
-            [class.over]="c.state === 'over' || c.over"
+            [class.over]="c.over"
             [style.--sq-color]="c.color"
             [appTip]="c.title"
           ></span>

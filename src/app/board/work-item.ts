@@ -68,7 +68,7 @@ export class WorkItem {
   readonly dropped = output<CdkDragDrop<unknown>>();
 
   readonly grades = this.store.gradeMeta;
-  /** Sprint-cell width, fixed at 36px on the canvas board. */
+  /** Sprint-cell width — TRACK_W / quarter sprints, so the track stays fixed-width. */
   readonly px = input.required<number>();
   /** Canvas zoom — divides into pointer deltas and counter-zooms fixed overlays. */
   readonly zoom = input.required<number>();
@@ -105,7 +105,7 @@ export class WorkItem {
   readonly barTip = signal<BarTip | null>(null);
 
   private readonly hideBarTipOnDrag = effect(() => {
-    if (this.store.drag() || this.store.projectDrag()) {
+    if (this.store.drag()) {
       this.hideBarTip();
     }
   });
@@ -305,7 +305,7 @@ export class WorkItem {
 
   /** Show the rich hover panel anchored above a filled bar. */
   showTip(event: MouseEvent, s: WorkItemSlot): void {
-    if (this.dragging() || this.store.drag() || this.store.projectDrag() || !s.engineer) return;
+    if (this.dragging() || this.store.drag() || !s.engineer) return;
     this.cancelHide();
     const bar = event.currentTarget as HTMLElement;
     const rect = bar.getBoundingClientRect();

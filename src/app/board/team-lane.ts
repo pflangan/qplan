@@ -10,7 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDragPreview, CdkDropList } from '@angular/cdk/drag-drop';
 import { CapacityStore } from '../capacity-store.service';
 import { Grade } from '../models';
 import { RichTip } from '../rich-tip.directive';
@@ -27,7 +27,7 @@ interface SeatOption {
 
 @Component({
   selector: 'app-team-lane',
-  imports: [CdkDrag, CdkDropList, RichTip, WorkItem],
+  imports: [CdkDrag, CdkDragPreview, CdkDropList, RichTip, WorkItem],
   templateUrl: './team-lane.html',
   styleUrl: './team-lane.scss',
 })
@@ -35,7 +35,7 @@ export class TeamLane {
   readonly store = inject(CapacityStore);
   private readonly hostEl = inject<ElementRef<HTMLElement>>(ElementRef);
   readonly teamId = input.required<string>();
-  /** Sprint-cell width — fixed at 36px on the canvas board. */
+  /** Sprint-cell width — TRACK_W / quarter sprints, so the track stays fixed-width. */
   readonly px = input.required<number>();
   /** Canvas zoom — keeps fixed-position overlays 1:1 and cursor math honest. */
   readonly zoom = input.required<number>();
@@ -110,26 +110,9 @@ export class TeamLane {
     ),
   );
 
-  /** Project dragged from the planning panel while hovering this lane, else null. */
-  readonly hoveredProject = computed(() => {
-    if (!this.projectHover()) return null;
-    const d = this.store.projectDrag();
-    if (!d) return null;
-    return this.store.projects().find((s) => s.id === d.projectId) ?? null;
-  });
-
-  /** Sprints the hovered project would add if dropped here. */
-  readonly previewRequired = computed(() => {
-    const project = this.hoveredProject();
-    return project ? project.slots.length * this.store.slotSprints(project) : 0;
-  });
-
-  /** Committed + previewed sprints beyond the team's total capacity. */
+  /** Committed sprints beyond the team's total capacity. */
   readonly overSprints = computed(() =>
-    Math.max(
-      0,
-      this.committedSprints() + this.previewRequired() - this.totalSprints(),
-    ),
+    Math.max(0, this.committedSprints() - this.totalSprints()),
   );
 
   /**
@@ -137,14 +120,12 @@ export class TeamLane {
    * free squares padding out to the team's total capacity. Committed-but-
    * unallocated squares get a border in the min-grade color (light orange
    * when any grade qualifies); allocated squares are filled with the
-   * assigned engineer's grade color. While a project is dragged over the lane,
-   * free squares shade with the required capacity and any excess shows as
-   * bold red over-capacity squares; committed squares beyond the team's
-   * total stay red-bordered as a persistent risk marker.
+   * assigned engineer's grade color. Committed squares beyond the team's
+   * total stay red-bordered as a persistent over-capacity risk marker.
    */
   readonly capacityCells = computed(() => {
     const cells: {
-      state: 'free' | 'open' | 'filled' | 'preview' | 'over';
+      state: 'free' | 'open' | 'filled';
       color?: string;
       title: string;
       over?: boolean;
@@ -175,31 +156,9 @@ export class TeamLane {
     for (let i = total; i < cells.length; i++) {
       cells[i] = { ...cells[i], over: true };
     }
-    const project = this.hoveredProject();
-    if (project) {
-      const required = this.previewRequired();
-      const color = project.color || '#94a3b8';
-      const free = Math.max(0, total - cells.length);
-      const shaded = Math.min(required, free);
-      for (let i = 0; i < shaded; i++) {
-        cells.push({
-          state: 'preview',
-          color,
-          title: `${project.name} · ${required} sprints required (drop to add)`,
-        });
-      }
-      for (let i = 0; i < required - free; i++) {
-        cells.push({
-          state: 'over',
-          color,
-          title: `${project.name} · over capacity by ${required - free} sprints`,
-        });
-      }
-    } else {
-      const free = Math.max(0, total - cells.length);
-      for (let i = 0; i < free; i++) {
-        cells.push({ state: 'free', title: 'Uncommitted capacity' });
-      }
+    const free = Math.max(0, total - cells.length);
+    for (let i = 0; i < free; i++) {
+      cells.push({ state: 'free', title: 'Uncommitted capacity' });
     }
     return cells;
   });
@@ -217,18 +176,6 @@ export class TeamLane {
   );
 
   readonly availListId = computed(() => `avail-${this.teamId()}`);
-
-  /** Lane-level drop list id — receives dragged projects. */
-  readonly laneListId = computed(() => `lane-${this.teamId()}`);
-
-  /** True while a dragged project hovers this lane (drives preview + highlight). */
-  readonly projectHover = signal(false);
-
-  /** The lane only accepts projects dragged from the planning panel. */
-  readonly projectPredicate = (item: CdkDrag<unknown>): boolean => {
-    const data = item.data as { kind?: string } | undefined;
-    return data?.kind === 'project';
-  };
 
   /** Collapsed avail section = fixed 150px; expanded = as tall as needed. */
   readonly availExpanded = signal(false);
@@ -351,7 +298,7 @@ export class TeamLane {
   }
 
   showAvailTip(event: MouseEvent, engineerId: string): void {
-    if (this.store.drag() || this.store.projectDrag()) return;
+    if (this.store.drag()) return;
     this.clearAvailTipTimer();
     const icon = event.currentTarget as HTMLElement;
     const rect = icon.getBoundingClientRect();
@@ -428,13 +375,7 @@ export class TeamLane {
   onDrop(event: CdkDragDrop<unknown>): void {
     const data = event.item.data as
       | { kind: 'available'; engineerId: string }
-      | { kind: 'project'; projectId: string }
       | undefined;
-    if (data?.kind === 'project') {
-      this.projectHover.set(false);
-      this.store.addProjectToTeam(data.projectId, this.teamId());
-      return;
-    }
     if (!data || data.kind !== 'available') return;
 
     const target = event.container.id;

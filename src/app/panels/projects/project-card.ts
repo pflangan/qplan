@@ -1,13 +1,12 @@
 import { Component, HostListener, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
 import { CapacityStore } from '../../capacity-store.service';
 import { COLOR_PALETTE, GRADE_RANK, Grade, sizeForTotal, sizeSpec } from '../../models';
 import { RichTip } from '../../rich-tip.directive';
 
 @Component({
   selector: 'app-project-card',
-  imports: [CdkDrag, CdkDragHandle, FormsModule, RichTip],
+  imports: [FormsModule, RichTip],
   templateUrl: './project-card.html',
   styleUrl: './project-card.scss',
 })
@@ -85,12 +84,6 @@ export class ProjectCard {
   readonly canAdd = computed(() => {
     const project = this.project();
     return !!project && this.store.canAddToBoard(project);
-  });
-
-  /** Drag handle for ready projects, and for boarded ones to re-target a team. */
-  readonly draggable = computed(() => {
-    const project = this.project();
-    return !!project && (project.onBoard || this.canAdd());
   });
 
   startRename(): void {

@@ -167,9 +167,11 @@ export interface Quarter {
   sprints: number; // 5–7
 }
 
-/** Horizontal scale: one sprint column on the timeline board (micro scale).
- *  Fixed — the canvas board is zoomed/panned instead of shrinking cells. */
-export const PX_PER_SPRINT_X = 36;
+/** Horizontal scale: fixed work-item sprint-track width (layout px).
+ *  The per-sprint cell width derives from it (TRACK_W / quarter sprints), so
+ *  5–7 sprint quarters all fit the same track — only tick count and spacing
+ *  change. The canvas board is zoomed/panned instead of widening tracks. */
+export const TRACK_W = 216;
 
 /** Canvas board layout: free-form lane positions + saved viewport. */
 export interface BoardLayout {
