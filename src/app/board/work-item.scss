@@ -231,6 +231,12 @@
     transition: box-shadow 0.15s;
   }
 
+  // Assignee unavailable during the bar's window — deep crimson so the
+  // problem is unmissable at a glance.
+  &.conflict {
+    background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+  }
+
   .bar-name {
     flex: 1;
     min-width: 0;

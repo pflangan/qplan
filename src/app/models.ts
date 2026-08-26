@@ -116,8 +116,8 @@ export interface Team {
 /** An engineer's availability for the selected quarter. */
 export interface CapacityMember {
   engineerId: string;
-  /** Available from sprint 1 through this count (1..quarter sprints). */
-  sprints: number;
+  /** 0-based indices of sprints the engineer is NOT available for. */
+  unavailable: number[];
 }
 
 /** One required engineer seat on a project, sourced from a team. */

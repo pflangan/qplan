@@ -105,7 +105,19 @@
                 @for (s of sprintNos(); track s; let i = $index) {
                   <span class="tick" [style.left.%]="(i / quarterSprints()) * 100"></span>
                 }
-                <div class="cap-track">
+                <div
+                  class="cap-track"
+                  (click)="onCapCellClick($event, m.engineer.id)"
+                  appTip="Click a sprint to toggle availability"
+                >
+                  @for (i of m.unavailable; track i) {
+                    <div
+                      class="cap-off"
+                      [style.left.%]="(i / quarterSprints()) * 100"
+                      [style.width.%]="(100 / quarterSprints())"
+                      [appTip]="'Not available sprint ' + (i + 1)"
+                    ></div>
+                  }
                   @for (a of store.allocationsOf(m.engineer.id); track a.slotId) {
                     <div
                       class="cap-seg"
@@ -115,17 +127,19 @@
                       [appTip]="a.projectName + ': S' + (a.start + 1) + '–S' + (a.start + a.sprints)"
                     ></div>
                   }
-                  @if (quarterSprints() > m.sprints) {
+                </div>
+                @for (a of store.allocationsOf(m.engineer.id); track a.slotId) {
+                  @for (c of conflictRuns(a.start, a.sprints, m.unavailable); track $index) {
                     <div
-                      class="cap-gray"
-                      [style.left.%]="(m.sprints / quarterSprints()) * 100"
-                      [style.width.%]="((quarterSprints() - m.sprints) / quarterSprints()) * 100"
-                      [appTip]="'Not available beyond sprint ' + m.sprints"
+                      class="cap-conflict"
+                      [style.left.%]="(c.start / quarterSprints()) * 100"
+                      [style.width.%]="(c.len / quarterSprints()) * 100"
+                      [appTip]="a.projectName + ' overlaps sprint' + (c.len > 1 ? 's ' + (c.start + 1) + '–' + (c.start + c.len) : ' ' + (c.start + 1)) + ' — engineer unavailable'"
                     ></div>
                   }
-                </div>
+                }
               </div>
-              <span class="cap-pct" [class.over]="pctOf(m.sprints, m.engineer.id) > 100" appTip="% of available sprints allocated">{{ pctOf(m.sprints, m.engineer.id) }}%</span>
+              <span class="cap-pct" [class.over]="pctOf(m.avail, m.engineer.id) > 100" appTip="% of available sprints allocated">{{ pctOf(m.avail, m.engineer.id) }}%</span>
 
             </div>
             <!-- Compact drag preview: grade tag + name only. Mirrors the
@@ -169,6 +183,15 @@
             <span>{{ tip.used }} / {{ tip.avail }} sprints allocated</span>
             <b [class.over]="tip.pct > 100">{{ tip.pct }}%</b>
           </div>
+          @if (tip.conflicts.length) {
+            <div class="tip-warn">
+              <strong>⚠ Unavailability conflict</strong>
+              <span>
+                Allocated during off sprints {{ sprintLabels(tip.conflicts) }} — the engineer
+                is not available then.
+              </span>
+            </div>
+          }
           @if (tip.allocations.length) {
             <div class="tip-sub">This quarter</div>
             <ul class="tip-allocs">

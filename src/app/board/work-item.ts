@@ -292,6 +292,19 @@ export class WorkItem {
     return s.sprints;
   }
 
+  /** True when the bar's window (live during a drag) hits an off sprint. */
+  barConflict(s: WorkItemSlot): boolean {
+    if (!s.engineer) return false;
+    const team = this.store.homeTeamOfEngineer(s.engineer.id);
+    if (!team) return false;
+    const off = new Set(this.store.unavailableOf(team.id, s.engineer.id));
+    const start = this.startOf(s);
+    for (let i = start; i < start + s.sprints; i++) {
+      if (off.has(i)) return true;
+    }
+    return false;
+  }
+
   /**
    * Screen point → overlay coords. Overlays counter-zoom themselves (CSS
    * `zoom: 1/zoom`) to stay 1:1 in screen px, so this only has to subtract

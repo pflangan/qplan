@@ -299,8 +299,9 @@
 
 .engineer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 3px 6px;
   padding: 4px 6px;
   border-radius: 8px;
   background: #f8fafc;
@@ -317,6 +318,15 @@
     border-color: color-mix(in srgb, var(--team-color) 40%, white);
   }
 
+  // Line 1: grade select, engineer name, remove button
+  .eng-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+
   .eng-name {
     flex: 1;
     min-width: 0;
@@ -327,41 +337,55 @@
     white-space: nowrap;
   }
 
-  .sprints-ctrl {
+  // Line 2: per-sprint availability toggles — one numbered cell per sprint in
+  // the quarter, plus an N/M readout. Off sprints are hatched out.
+  .sprint-cells {
     display: flex;
     align-items: center;
-    gap: 3px;
-    margin-left: auto;
-    flex-shrink: 0;
+    gap: 2px;
+    flex: 1 0 100%;
 
-    button {
-      width: 17px;
-      height: 17px;
-      border: none;
+    .sc {
+      width: 18px;
+      height: 18px;
+      border: 1px solid #cbd5e1;
       border-radius: 5px;
-      background: transparent;
+      background: #fff;
       color: #475569;
-      font-size: 13px;
+      font-size: 10px;
+      font-weight: 700;
       line-height: 1;
       cursor: pointer;
       display: grid;
       place-items: center;
+      padding: 0;
 
       &:hover:not(:disabled) {
-        background: #e2e8f0;
+        border-color: var(--team-color);
         color: #0f172a;
       }
 
+      &.off {
+        border-color: #cbd5e1;
+        color: #94a3b8;
+        background: repeating-linear-gradient(
+          45deg,
+          #e2e8f0,
+          #e2e8f0 3px,
+          #f1f5f9 3px,
+          #f1f5f9 6px
+        );
+      }
+
       &:disabled {
-        color: #cbd5e1;
         cursor: not-allowed;
+        opacity: 0.5;
       }
     }
 
-    .sprints {
-      min-width: 16px;
-      text-align: center;
-      font-size: 12px;
+    .avail-count {
+      margin-left: 4px;
+      font-size: 11px;
       font-weight: 700;
       color: #475569;
     }

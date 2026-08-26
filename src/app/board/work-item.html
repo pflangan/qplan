@@ -39,6 +39,7 @@
             <div
               class="bar"
               [class.shifting]="dragging()?.slotId === s.slot.id"
+              [class.conflict]="barConflict(s)"
               [style.left.px]="offsetOf(s)"
               [style.width.px]="sprintsOf(s) * px()"
               (pointerdown)="onPointerDown($event, s)"

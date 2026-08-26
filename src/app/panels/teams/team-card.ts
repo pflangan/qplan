@@ -39,6 +39,11 @@ export class TeamCard {
     this.store.teams().find((t) => t.id === this.teamId()),
   );
 
+  /** Sprint numbers 1..N for the selected quarter's toggle cells. */
+  readonly sprintNos = computed(() =>
+    Array.from({ length: this.store.selectedQuarter().sprints }, (_, i) => i + 1),
+  );
+
   /** Rich hover panel anchor (engineer row); null when hidden. */
   readonly engTip = signal<{ engineerId: string; x: number; y: number; below: boolean } | null>(
     null,
@@ -130,8 +135,8 @@ export class TeamCard {
     this.store.setEngineerGrade(this.teamId(), engineerId, grade as Grade);
   }
 
-  setSprints(engineerId: string, sprints: number): void {
-    this.store.setSprints(this.teamId(), engineerId, sprints);
+  toggleSprint(engineerId: string, index: number): void {
+    this.store.toggleSprint(this.teamId(), engineerId, index);
   }
 
   /** Engineer pending removal in the confirm dialog; null when closed. */

@@ -67,24 +67,26 @@ export class TeamLane {
     return this.sprintNos().map((s) => this.store.sprintDate(qIdx, s - 1));
   });
 
-  /** Members available this quarter: member joined with engineer + available sprints. */
+  /** Members available this quarter: member joined with engineer + availability. */
   readonly members = computed(() => {
     const team = this.team();
     if (!team) return [];
-    const members = this.store.membersOf(team.id);
-    return members
+    const quarter = this.quarterSprints();
+    return this.store
+      .membersOf(team.id)
       .map((m) => ({
-        sprints: m.sprints,
+        unavailable: m.unavailable,
+        avail: quarter - m.unavailable.length,
         engineer: team.engineers.find((e) => e.id === m.engineerId),
       }))
-      .filter((m): m is { sprints: number; engineer: NonNullable<typeof m.engineer> } =>
+      .filter((m): m is { unavailable: number[]; avail: number; engineer: NonNullable<typeof m.engineer> } =>
         !!m.engineer,
       );
   });
 
   /** Total available sprints across the team this quarter. */
   readonly totalSprints = computed(() =>
-    this.members().reduce((sum, m) => sum + m.sprints, 0),
+    this.members().reduce((sum, m) => sum + m.avail, 0),
   );
 
   /** Sprints already committed to filled slots in this lane. */
@@ -204,7 +206,16 @@ export class TeamLane {
     const allocations = this.store.allocationsOf(tip.engineerId);
     const used = allocations.reduce((sum, a) => sum + a.sprints, 0);
     const pct = avail ? Math.round((used / avail) * 100) : 0;
-    return { engineer, team, inCapacity, avail, allocations, used, pct, ...tip };
+    const unavailable = team ? this.store.unavailableOf(team.id, tip.engineerId) : [];
+    const off = new Set(unavailable);
+    const conflicts = [
+      ...new Set(
+        allocations.flatMap((a) =>
+          Array.from({ length: a.sprints }, (_, k) => a.start + k).filter((i) => off.has(i)),
+        ),
+      ),
+    ].sort((a, b) => a - b);
+    return { engineer, team, inCapacity, avail, allocations, used, pct, conflicts, ...tip };
   });
 
   constructor() {
@@ -266,12 +277,49 @@ export class TeamLane {
     return data?.kind === 'available';
   };
 
-  /** % of the engineer's available sprints already allocated. */
+  /** % of the engineer's available sprints already allocated (0 when fully off). */
   pctOf(sprints: number, engineerId: string): number {
     const used = this.store
       .allocationsOf(engineerId)
       .reduce((sum, a) => sum + a.sprints, 0);
-    return Math.round((used / sprints) * 100);
+    return sprints > 0 ? Math.round((used / sprints) * 100) : 0;
+  }
+
+  /** Click a sprint cell on the capacity track → toggle that sprint's availability. */
+  onCapCellClick(event: MouseEvent, engineerId: string): void {
+    event.stopPropagation();
+    if (this.store.drag()) return;
+    const track = event.currentTarget as HTMLElement;
+    const r = track.getBoundingClientRect();
+    if (!r.width) return;
+    const q = this.quarterSprints();
+    const idx = Math.min(
+      q - 1,
+      Math.max(0, Math.floor(((event.clientX - r.left) / r.width) * q)),
+    );
+    this.store.toggleSprint(this.teamId(), engineerId, idx);
+  }
+
+  /** Contiguous runs where an allocation window overlaps unavailable sprints. */
+  conflictRuns(
+    start: number,
+    sprints: number,
+    unavailable: number[],
+  ): { start: number; len: number }[] {
+    const off = new Set(unavailable);
+    const runs: { start: number; len: number }[] = [];
+    for (let i = start; i < start + sprints; i++) {
+      if (!off.has(i)) continue;
+      const last = runs[runs.length - 1];
+      if (last && last.start + last.len === i) last.len++;
+      else runs.push({ start: i, len: 1 });
+    }
+    return runs;
+  }
+
+  /** "S3, S5" — 0-based sprint indices to compact labels. */
+  sprintLabels(indices: number[]): string {
+    return indices.map((i) => `S${i + 1}`).join(', ');
   }
 
   /** Grade color for the drag-preview chip (data comes back untyped). */

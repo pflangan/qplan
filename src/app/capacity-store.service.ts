@@ -525,9 +525,21 @@ export class CapacityStore {
 
   /** Sprints the engineer is available for this quarter (0 when not in capacity). */
   availSprintsOf(teamId: string, engineerId: string): number {
+    const member = this.membersOf(teamId).find((m) => m.engineerId === engineerId);
+    return member ? this.selectedQuarter().sprints - member.unavailable.length : 0;
+  }
+
+  /** 0-based indices of sprints the engineer is unavailable for (empty when not in capacity). */
+  unavailableOf(teamId: string, engineerId: string): number[] {
     return (
-      this.membersOf(teamId).find((m) => m.engineerId === engineerId)?.sprints ?? 0
+      this.membersOf(teamId).find((m) => m.engineerId === engineerId)?.unavailable ??
+      []
     );
+  }
+
+  /** True when the engineer is unavailable for the given 0-based sprint index. */
+  isSprintOff(teamId: string, engineerId: string, index: number): boolean {
+    return this.unavailableOf(teamId, engineerId).includes(index);
   }
 
   isInCapacity(engineerId: string): boolean {
@@ -554,7 +566,7 @@ export class CapacityStore {
     } else {
       const member: CapacityMember = {
         engineerId,
-        sprints: this.selectedQuarter().sprints,
+        unavailable: [],
       };
       this.capacity.update((c) => ({
         ...c,
@@ -572,7 +584,7 @@ export class CapacityStore {
       .filter((e) => !existing.has(e.id))
       .map<CapacityMember>((e) => ({
         engineerId: e.id,
-        sprints: this.selectedQuarter().sprints,
+        unavailable: [],
       }));
     if (!additions.length) {
       this.showToast('Whole team is already in this quarter');
@@ -587,18 +599,25 @@ export class CapacityStore {
     );
   }
 
-  setSprints(teamId: string, engineerId: string, sprints: number): void {
-    const clamped = Math.max(
-      1,
-      Math.min(this.selectedQuarter().sprints, Math.round(sprints)),
-    );
+  /**
+   * Toggle a single sprint's availability (0-based index). Allocations that
+   * land on newly-off sprints are left in place — the lane flags them as
+   * conflicts instead of silently moving them.
+   */
+  toggleSprint(teamId: string, engineerId: string, index: number): void {
+    const quarter = this.selectedQuarter().sprints;
+    if (index < 0 || index >= quarter) return;
     this.capacity.update((c) => ({
       ...c,
-      [teamId]: (c[teamId] ?? []).map((m) =>
-        m.engineerId === engineerId ? { ...m, sprints: clamped } : m,
-      ),
+      [teamId]: (c[teamId] ?? []).map((m) => {
+        if (m.engineerId !== engineerId) return m;
+        const off = m.unavailable.includes(index);
+        const unavailable = off
+          ? m.unavailable.filter((i) => i !== index)
+          : [...m.unavailable, index].sort((a, b) => a - b);
+        return { ...m, unavailable };
+      }),
     }));
-    this.replaceOrUnassign(engineerId);
   }
 
   /**
@@ -1019,9 +1038,9 @@ export class CapacityStore {
 
   /**
    * Earliest start where [start, start+duration) fits without overlapping the
-   * engineer's other allocations, or null. Prefers windows inside their stated
-   * availability; falls back to the gray tail (beyond availability) so a
-   * contiguous bar can still be placed — capacity may exceed 100%.
+   * engineer's other allocations, or null. Prefers windows that avoid their
+   * off sprints entirely; falls back to any clear window (off sprints become
+   * flagged conflicts) so a contiguous bar can still be placed.
    */
   firstFreeStart(
     engineerId: string,
@@ -1030,19 +1049,22 @@ export class CapacityStore {
   ): number | null {
     const home = this.homeTeamOfEngineer(engineerId);
     if (!home) return null;
-    const avail = this.availSprintsOf(home.id, engineerId);
     const quarter = this.selectedQuarter().sprints;
+    const off = new Set(this.unavailableOf(home.id, engineerId));
     const taken = this.allocationsOf(engineerId).filter((a) => a.slotId !== ignoreSlotId);
-    const fitsWithin = (limit: number): number | null => {
-      for (let start = 0; start <= limit - duration; start++) {
-        const clash = taken.some(
-          (a) => start < a.start + a.sprints && a.start < start + duration,
-        );
-        if (!clash) return start;
-      }
-      return null;
+    const windowClear = (s: number): boolean =>
+      !taken.some((a) => s < a.start + a.sprints && a.start < s + duration);
+    const windowAvail = (s: number): boolean => {
+      for (let i = s; i < s + duration; i++) if (off.has(i)) return false;
+      return true;
     };
-    return fitsWithin(Math.min(avail, quarter)) ?? fitsWithin(quarter);
+    for (let start = 0; start <= quarter - duration; start++) {
+      if (windowClear(start) && windowAvail(start)) return start;
+    }
+    for (let start = 0; start <= quarter - duration; start++) {
+      if (windowClear(start)) return start;
+    }
+    return null;
   }
 
   /** Why the engineer can't take this seat, or null when they can. */
@@ -1136,7 +1158,10 @@ export class CapacityStore {
           name: engineer.name,
           grade: engineer.grade,
           teamName: team.name,
-          freeSprints: Math.max(0, member.sprints - used),
+          freeSprints: Math.max(
+            0,
+            this.availSprintsOf(team.id, member.engineerId) - used,
+          ),
         });
       }
     }
@@ -1236,7 +1261,9 @@ export class CapacityStore {
       for (const [teamId, members] of Object.entries(c)) {
         next[teamId] = members.map((m) => ({
           ...m,
-          sprints: Math.min(m.sprints, quarter),
+          unavailable: [
+            ...new Set(m.unavailable.filter((i) => i >= 0 && i < quarter)),
+          ].sort((a, b) => a - b),
         }));
       }
       return next;
@@ -1252,7 +1279,7 @@ export class CapacityStore {
   /** Plain-object snapshot of all state (export files + localStorage share this). */
   private exportSnapshot() {
     return {
-      version: 5,
+      version: 6,
       exportedAt: new Date().toISOString(),
       selectedQuarterId: this.selectedQuarterId(),
       quarters: this.quarters(),
@@ -1325,8 +1352,8 @@ export class CapacityStore {
 
   /**
    * Validate + install a snapshot (v1 flat, v2 per-quarter, v3 with settings,
-   * v4 with board layout). Returns false for unrecognized shapes. Shared by
-   * file import and localStorage load.
+   * v4 with board layout, v6 per-sprint availability). Returns false for
+   * unrecognized shapes. Shared by file import and localStorage load.
    */
   private applyData(input: unknown): boolean {
     if (!input || typeof input !== 'object') return false;
@@ -1363,7 +1390,8 @@ export class CapacityStore {
         data.version !== 2 &&
         data.version !== 3 &&
         data.version !== 4 &&
-        data.version !== 5) ||
+        data.version !== 5 &&
+        data.version !== 6) ||
       !Array.isArray(data.quarters) ||
       !data.quarters.length ||
       !Array.isArray(data.teams)
@@ -1432,6 +1460,50 @@ export class CapacityStore {
       color: s.color || COLOR_PALETTE[colorCursor++ % COLOR_PALETTE.length],
     });
 
+    // v5 and earlier stored a prefix (`sprints: N` = available sprints 1..N);
+    // v6 stores explicit 0-based off indices. Migrate per quarter — each has
+    // its own sprint count.
+    const quarterSprints = new Map(
+      data.quarters.map((q: Quarter) => [q.id, q.sprints]),
+    );
+    const migrateCapacity = (
+      quarterId: string,
+      capacity: Record<string, { engineerId: string; unavailable?: number[]; sprints?: number }[]>,
+    ): Record<string, CapacityMember[]> => {
+      const quarter = quarterSprints.get(quarterId) ?? 0;
+      const migrate = (m: {
+        engineerId: string;
+        unavailable?: number[];
+        sprints?: number;
+      }): CapacityMember => {
+        if (Array.isArray(m.unavailable)) {
+          return {
+            engineerId: m.engineerId,
+            unavailable: [
+              ...new Set(
+                m.unavailable.filter((i) => Number.isInteger(i) && i >= 0 && i < quarter),
+              ),
+            ].sort((a, b) => a - b),
+          };
+        }
+        // Legacy prefix: available sprints 1..sprints → the tail is off.
+        const avail = Math.max(0, Math.min(quarter, Math.round(m.sprints ?? quarter)));
+        return {
+          engineerId: m.engineerId,
+          unavailable: Array.from(
+            { length: quarter - avail },
+            (_, i) => avail + i,
+          ),
+        };
+      };
+      return Object.fromEntries(
+        Object.entries(capacity ?? {}).map(([teamId, members]) => [
+          teamId,
+          (members ?? []).map(migrate),
+        ]),
+      );
+    };
+
     const plans: Record<
       string,
       {
@@ -1449,7 +1521,7 @@ export class CapacityStore {
       const projects = (plan.projects ?? plan.subInitiatives ?? []).map(withColor);
       plans[quarterId] = {
         projects,
-        capacity: plan.capacity ?? {},
+        capacity: migrateCapacity(quarterId, plan.capacity ?? {}),
         assignments: sanitizeAssignments(projects, plan.assignments ?? {}),
       };
     }

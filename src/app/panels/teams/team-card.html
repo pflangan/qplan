@@ -48,46 +48,46 @@
           (mouseenter)="showEngTip($event, e.id)"
           (mouseleave)="scheduleHideTip()"
         >
-          <select
-            class="grade-select"
-            [ngModel]="e.grade"
-            (ngModelChange)="setGrade(e.id, $event)"
-            (click)="$event.stopPropagation()"
-            [style.color]="grades()[e.grade].color"
-            [style.font-weight]="700"
-            [appTip]="grades()[e.grade].label"
-          >
-            @for (g of gradeList(); track g.key) {
-              <option [ngValue]="g.key">{{ g.key }} · {{ g.value.label }}</option>
-            }
-          </select>
-          <span class="eng-name">{{ e.name }}</span>
-          <div class="sprints-ctrl" (click)="$event.stopPropagation()">
+          <div class="eng-top">
+            <select
+              class="grade-select"
+              [ngModel]="e.grade"
+              (ngModelChange)="setGrade(e.id, $event)"
+              (click)="$event.stopPropagation()"
+              [style.color]="grades()[e.grade].color"
+              [style.font-weight]="700"
+              [appTip]="grades()[e.grade].label"
+            >
+              @for (g of gradeList(); track g.key) {
+                <option [ngValue]="g.key">{{ g.key }} · {{ g.value.label }}</option>
+              }
+            </select>
+            <span class="eng-name">{{ e.name }}</span>
             <button
               type="button"
-              [disabled]="!store.isInCapacity(e.id)"
-              (click)="setSprints(e.id, store.availSprintsOf(teamId(), e.id) - 1)"
-              appTip="Available one fewer sprint"
-            >−</button>
-            <span
-              class="sprints"
-              [appTip]="store.availSprintsOf(teamId(), e.id) + ' of ' + store.selectedQuarter().sprints + ' sprints available'"
-            >{{ store.availSprintsOf(teamId(), e.id) }}</span>
-            <button
-              type="button"
-              [disabled]="!store.isInCapacity(e.id)"
-              (click)="setSprints(e.id, store.availSprintsOf(teamId(), e.id) + 1)"
-              appTip="Available one more sprint"
-            >+</button>
+              class="icon-btn remove-eng"
+              (click)="askRemoveEngineer(e.id); $event.stopPropagation()"
+              appTip="Remove engineer"
+            >
+              ×
+            </button>
           </div>
-          <button
-            type="button"
-            class="icon-btn remove-eng"
-            (click)="askRemoveEngineer(e.id); $event.stopPropagation()"
-            appTip="Remove engineer"
-          >
-            ×
-          </button>
+          <div class="sprint-cells" (click)="$event.stopPropagation()">
+            @for (s of sprintNos(); track s; let i = $index) {
+              <button
+                type="button"
+                class="sc"
+                [class.off]="store.isSprintOff(teamId(), e.id, i)"
+                [disabled]="!store.isInCapacity(e.id)"
+                (click)="toggleSprint(e.id, i)"
+                [appTip]="'Sprint ' + s + (store.isSprintOff(teamId(), e.id, i) ? ' — unavailable' : ' — available')"
+              >{{ s }}</button>
+            }
+            <span
+              class="avail-count"
+              [appTip]="store.availSprintsOf(teamId(), e.id) + ' of ' + store.selectedQuarter().sprints + ' sprints available'"
+            >{{ store.availSprintsOf(teamId(), e.id) }}/{{ store.selectedQuarter().sprints }}</span>
+          </div>
         </div>
       } @empty {
         <p class="none">No engineers yet</p>

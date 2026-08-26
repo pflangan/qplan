@@ -553,7 +553,10 @@ export class Board {
   readonly groupTotal = computed(() =>
     this.store.teams().reduce(
       (sum, t) =>
-        sum + this.store.membersOf(t.id).reduce((s, m) => s + m.sprints, 0),
+        sum +
+        this.store
+          .membersOf(t.id)
+          .reduce((s, m) => s + this.store.availSprintsOf(t.id, m.engineerId), 0),
       0,
     ),
   );
@@ -616,7 +619,8 @@ export class Board {
     // Orphan seats (no team) shouldn't vanish from the ribbon: gray markers.
     for (const project of this.store.projects().filter((s) => s.onBoard)) {
       const sprints = this.store.slotSprints(project);
-      for (const slot of project.slots.filter((sl) => !sl.teamId)) {
+      const orphanSeats = project.slots.filter((sl) => !sl.teamId).length;
+      for (let s = 0; s < orphanSeats; s++) {
         for (let i = 0; i < sprints; i++) {
           cells.push({
             state: 'open',
