@@ -33,6 +33,16 @@ export class ProjectCard {
   readonly confirmingRemoveEng = signal(false);
   /** Rich confirm open — deleting the project entirely. */
   readonly confirmingDelete = signal(false);
+  /**
+   * Rich confirm open — switching engineer sourcing to the accountable team
+   * only. `prev` is the prior explicit accountable choice (reverted on cancel
+   * when the switch was triggered by changing the accountable team).
+   */
+  readonly confirmingOnly = signal<{
+    teamId: string;
+    prev: string | null;
+    turningOn: boolean;
+  } | null>(null);
 
   readonly project = computed(() =>
     this.store.projects().find((s) => s.id === this.projectId()),
@@ -60,6 +70,21 @@ export class ProjectCard {
   readonly largestTeamId = computed(() => {
     const project = this.project();
     return project ? this.store.effectiveAccountableTeamId(project) : null;
+  });
+
+  /**
+   * Team the Only toggle would source from: the explicit accountable choice,
+   * or — when every seat already shares one team — that team. Null (toggle
+   * disabled) for mixed or unassigned seats with no explicit choice.
+   */
+  readonly onlyTarget = computed(() => {
+    const project = this.project();
+    if (!project) return null;
+    if (project.accountableTeamId) return project.accountableTeamId;
+    const teams = new Set(
+      project.slots.map((s) => s.teamId).filter((t): t is string => !!t),
+    );
+    return teams.size === 1 ? [...teams][0] : null;
   });
 
   /** The seat that disappears when the engineer count is decremented. */
@@ -128,6 +153,12 @@ export class ProjectCard {
   }
 
   setSlotTeam(index: number, teamId: string | null): void {
+    const project = this.project();
+    // Manually picking a different team opts out of Only-mode (flag off; the
+    // other slots keep their teams).
+    if (project?.onlyAccountableTeam && teamId && teamId !== this.largestTeamId()) {
+      this.store.setOnlyAccountableTeam(project.id, null);
+    }
     this.store.setSlotTeam(this.projectId(), index, teamId ? teamId : null);
   }
 
@@ -153,9 +184,93 @@ export class ProjectCard {
     this.store.removeFromBoard(this.projectId());
   }
 
-  setAccountable(teamId: string | null): void {
-    this.store.setAccountableTeam(this.projectId(), teamId ? teamId : null);
+  /** Toggle "Only": on = all seats source from the accountable team. */
+  toggleOnly(): void {
+    const project = this.project();
+    if (!project) return;
+    if (project.onlyAccountableTeam) {
+      this.store.setOnlyAccountableTeam(project.id, null);
+      return;
+    }
+    const teamId = this.onlyTarget();
+    if (!teamId) {
+      this.store.showToast('No accountable team to source from yet');
+      return;
+    }
+    if (this.displacedFor(teamId).length) {
+      this.confirmingOnly.set({ teamId, prev: project.accountableTeamId, turningOn: true });
+    } else {
+      this.store.setOnlyAccountableTeam(project.id, teamId);
+    }
   }
+
+  /**
+   * Changing the accountable team while Only is on: apply the team change
+   * immediately (keeps the select's view in sync), then either confirm the
+   * seat re-pointing or revert the team choice on cancel.
+   */
+  setAccountable(teamId: string | null): void {
+    const project = this.project();
+    const id = teamId ? teamId : null;
+    if (!project || !project.onlyAccountableTeam || !id) {
+      this.store.setAccountableTeam(this.projectId(), id);
+      return;
+    }
+    const prev = project.accountableTeamId;
+    this.store.setAccountableTeam(this.projectId(), id);
+    if (this.displacedFor(id).length) {
+      this.confirmingOnly.set({ teamId: id, prev, turningOn: false });
+    } else {
+      this.store.retargetSlotsTo(this.projectId(), id);
+    }
+  }
+
+  applyOnly(): void {
+    const c = this.confirmingOnly();
+    this.confirmingOnly.set(null);
+    if (!c) return;
+    if (c.turningOn) this.store.setOnlyAccountableTeam(this.projectId(), c.teamId);
+    else this.store.retargetSlotsTo(this.projectId(), c.teamId);
+  }
+
+  cancelOnly(): void {
+    const c = this.confirmingOnly();
+    this.confirmingOnly.set(null);
+    // Accountable-team-change path: undo the team selection too.
+    if (c && !c.turningOn) this.store.setAccountableTeam(this.projectId(), c.prev);
+  }
+
+  /** Assigned engineers whose home team is not the given team. */
+  private displacedFor(teamId: string): {
+    name: string;
+    teamName: string;
+    color: string;
+  }[] {
+    const project = this.project();
+    if (!project) return [];
+    const out: { name: string; teamName: string; color: string }[] = [];
+    for (const slot of project.slots) {
+      const engId = this.store.assignments()[slot.id]?.engineerId;
+      if (!engId) continue;
+      const home = this.store.homeTeamOfEngineer(engId);
+      if (home?.id === teamId) continue;
+      const eng = this.store.engineerById(engId);
+      if (eng) {
+        out.push({
+          name: eng.name,
+          teamName: home?.name ?? 'No team',
+          color: home?.color ?? '#e2e8f0',
+        });
+      }
+    }
+    return out;
+  }
+
+  /** Displaced engineers listed in the Only confirm dialog. */
+  readonly onlyDisplaced = computed(() => {
+    const c = this.confirmingOnly();
+    return c ? this.displacedFor(c.teamId) : [];
+  });
 
   addToBoard(event: Event): void {
     event.stopPropagation();
@@ -164,6 +279,16 @@ export class ProjectCard {
 
   remove(): void {
     this.store.removeProject(this.projectId());
+  }
+
+  onlyTip(): string {
+    const project = this.project();
+    if (project?.onlyAccountableTeam) {
+      return 'Engineers sourced from the accountable team only — click to allow other teams';
+    }
+    return this.onlyTarget()
+      ? 'Source all engineers from the accountable team'
+      : 'Choose an accountable team — or give every seat the same team — first';
   }
 
   teamName(teamId: string | null): string {
@@ -210,6 +335,9 @@ export class ProjectCard {
       } else if (this.confirmingDelete()) {
         event.preventDefault();
         this.deleteProject();
+      } else if (this.confirmingOnly()) {
+        event.preventDefault();
+        this.applyOnly();
       }
     } else if (event.key === 'Escape') {
       if (
@@ -221,6 +349,9 @@ export class ProjectCard {
         this.confirmingOffBoard.set(false);
         this.confirmingRemoveEng.set(false);
         this.confirmingDelete.set(false);
+      } else if (this.confirmingOnly()) {
+        event.preventDefault();
+        this.cancelOnly();
       }
     }
   }

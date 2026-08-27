@@ -106,19 +106,29 @@
       }
     </div>
 
-    <label class="field accountable">
+    <div class="field accountable">
       <span class="field-label">Accountable team</span>
-      <select
-        [ngModel]="project.accountableTeamId"
-        (ngModelChange)="setAccountable($event)"
-        [class.placeholder]="!project.accountableTeamId"
-      >
-        <option [ngValue]="null">Largest allocation team ({{ teamName(largestTeamId()) }})</option>
-        @for (t of store.teams(); track t.id) {
-          <option [ngValue]="t.id">{{ t.name }}</option>
-        }
-      </select>
-    </label>
+      <div class="acct-row">
+        <select
+          [ngModel]="project.accountableTeamId"
+          (ngModelChange)="setAccountable($event)"
+          [class.placeholder]="!project.accountableTeamId"
+        >
+          <option [ngValue]="null">Largest allocation team ({{ teamName(largestTeamId()) }})</option>
+          @for (t of store.teams(); track t.id) {
+            <option [ngValue]="t.id">{{ t.name }}</option>
+          }
+        </select>
+        <button
+          type="button"
+          class="only-btn"
+          [class.on]="!!project.onlyAccountableTeam"
+          [disabled]="!project.onlyAccountableTeam && !onlyTarget()"
+          (click)="toggleOnly()"
+          [appTip]="onlyTip()"
+        >Only</button>
+      </div>
+    </div>
 
     <div class="slots">
       <span class="field-label">Engineers from</span>
@@ -277,6 +287,43 @@
           <footer>
             <button type="button" class="c-btn" (click)="confirmingDelete.set(false)">Cancel</button>
             <button type="button" class="c-btn danger" (click)="deleteProject()">Delete project</button>
+          </footer>
+        </div>
+      </div>
+    }
+
+    @if (confirmingOnly(); as c) {
+      <div class="confirm-overlay" (click)="cancelOnly()">
+        <div
+          class="confirm-dialog"
+          tabindex="0"
+          (click)="$event.stopPropagation()"
+          (keydown.escape)="cancelOnly()"
+        >
+          <h2>Source all engineers from {{ teamName(c.teamId) }}?</h2>
+          <div class="confirm-project">
+            <span class="cp-dot" [style.background]="project.color || '#94a3b8'"></span>
+            <strong>{{ project.name }}</strong>
+            <span class="cp-meta">{{ engineers() }} engineer seats re-pointed to {{ teamName(c.teamId) }}</span>
+          </div>
+          @if (onlyDisplaced().length) {
+            <div class="confirm-teams">
+              <span class="ct-label">Allocations from other teams to be removed:</span>
+              @for (e of onlyDisplaced(); track e.name) {
+                <span class="ct-chip">
+                  <span class="ct-dot" [style.background]="e.color"></span>
+                  {{ e.name }} · {{ e.teamName }}
+                </span>
+              }
+            </div>
+          }
+          <p class="confirm-note">
+            Every engineer seat is set to {{ teamName(c.teamId) }} and engineers from other
+            teams are unassigned from this project.
+          </p>
+          <footer>
+            <button type="button" class="c-btn" (click)="cancelOnly()">Cancel</button>
+            <button type="button" class="c-btn danger" (click)="applyOnly()">Use {{ teamName(c.teamId) }} only</button>
           </footer>
         </div>
       </div>

@@ -327,6 +327,47 @@ select {
   font-weight: 500;
 }
 
+// Accountable team: narrowed select with the "Only" toggle to its right.
+.acct-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+
+  select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.only-btn {
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled):not(.on) {
+    border-color: #6366f1;
+    color: #4f46e5;
+  }
+
+  &.on {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: white;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
 .slots {
   display: flex;
   flex-direction: column;

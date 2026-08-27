@@ -667,6 +667,7 @@ export class CapacityStore {
       size: null,
       sprints: null,
       accountableTeamId: null,
+      onlyAccountableTeam: false,
       slots: [],
       onBoard: false,
       color: this.nextColor(),
@@ -698,6 +699,7 @@ export class CapacityStore {
           size: s.size,
           sprints: spec?.sprints ?? null,
           accountableTeamId: null,
+          onlyAccountableTeam: false,
           slots,
           onBoard: false,
           color: this.nextColor(),
@@ -780,7 +782,15 @@ export class CapacityStore {
       projects.map((s) => {
         if (s.id !== projectId) return s;
         const slots: Slot[] = Array.from({ length: n }, (_, i) =>
-          s.slots[i] ? s.slots[i] : { id: `${projectId}:${i + 1}`, teamId: null, minGrade: null, tl: false },
+          s.slots[i]
+            ? s.slots[i]
+            : {
+                id: `${projectId}:${i + 1}`,
+                // Only-mode: new seats default to the accountable team
+                teamId: s.onlyAccountableTeam ? this.effectiveAccountableTeamId(s) : null,
+                minGrade: null,
+                tl: false,
+              },
         );
         return { ...s, size: sizeForTotal(n * (s.sprints ?? sizeSpec(s.size, this.sizes())?.sprints ?? 0), this.sizes()), slots };
       }),
@@ -903,6 +913,7 @@ export class CapacityStore {
         delete next[slotId];
         return next;
       });
+      this.clearTLForSlot(slotId);
     }
   }
 
@@ -910,6 +921,36 @@ export class CapacityStore {
     this.projects.update((projects) =>
       projects.map((s) => (s.id === projectId ? { ...s, accountableTeamId: teamId } : s)),
     );
+  }
+
+  /**
+   * Point every slot at one team, dropping assignments held by engineers from
+   * other teams (target-team engineers keep their seats).
+   */
+  retargetSlotsTo(projectId: string, teamId: string): void {
+    const project = this.projects().find((s) => s.id === projectId);
+    if (!project) return;
+    this.projects.update((projects) =>
+      projects.map((s) =>
+        s.id === projectId
+          ? { ...s, slots: s.slots.map((slot) => ({ ...slot, teamId })) }
+          : s,
+      ),
+    );
+    for (const slot of project.slots) this.clearAssignmentForSlot(slot.id, teamId);
+  }
+
+  /**
+   * Toggle "Only" sourcing: on = every slot sources engineers from the
+   * accountable team; off = slots keep their current teams.
+   */
+  setOnlyAccountableTeam(projectId: string, teamId: string | null): void {
+    this.projects.update((projects) =>
+      projects.map((s) =>
+        s.id === projectId ? { ...s, onlyAccountableTeam: !!teamId } : s,
+      ),
+    );
+    if (teamId) this.retargetSlotsTo(projectId, teamId);
   }
 
   /**
@@ -1222,6 +1263,18 @@ export class CapacityStore {
       delete next[slotId];
       return next;
     });
+    this.clearTLForSlot(slotId);
+  }
+
+  /** An emptied seat loses its tech-lead flag — the TL left with the engineer. */
+  private clearTLForSlot(slotId: string): void {
+    this.projects.update((projects) =>
+      projects.map((s) =>
+        s.slots.some((sl) => sl.id === slotId && sl.tl)
+          ? { ...s, slots: s.slots.map((sl) => (sl.id === slotId ? { ...sl, tl: false } : sl)) }
+          : s,
+      ),
+    );
   }
 
   // ---------- Quarter ----------

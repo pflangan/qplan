@@ -137,6 +137,8 @@ export interface Project {
   /** Explicit sprint duration per engineer; null = use the size spec default. */
   sprints: number | null;
   accountableTeamId: string | null;
+  /** True = every slot sources engineers from the accountable team only. */
+  onlyAccountableTeam?: boolean;
   slots: Slot[];
   onBoard: boolean;
   /** Display color, user-pickable; drives work-item and card accents. */
