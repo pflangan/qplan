@@ -2,183 +2,307 @@
   <article
     class="card"
     [class.on-board]="project.onBoard"
+    [class.compact]="compact()"
     [style.border-color]="project.color || '#e2e8f0'"
   >
-    <div class="card-top">
-      <button
-        type="button"
-        class="swatch"
-        [style.background]="project.color"
-        (click)="togglePalette(); $event.stopPropagation()"
-        appTip="Project color"
-      ></button>
-      @if (paletteOpen()) {
-        <div class="palette" (click)="$event.stopPropagation()">
-          @for (c of palette; track c) {
-            <button
-              type="button"
-              class="pal"
-              [style.background]="c"
-              [class.active]="project.color === c"
-              (click)="pickColor(c)"
-              [appTip]="c"
-            ></button>
-          }
-        </div>
-      }
-      @if (editingName()) {
-        <input
-          class="name-input"
-          autofocus
-          [ngModel]="draftName()"
-          (ngModelChange)="draftName.set($event)"
-          (keyup.enter)="commitRename()"
-          (keyup.escape)="editingName.set(false)"
-          (blur)="commitRename()"
-        />
-      } @else {
-        <button type="button" class="name" (click)="startRename()" appTip="Click to rename">
-          {{ project.name }}
-        </button>
-      }
-      <div class="actions">
-        @if (project.onBoard) {
+    @if (compact()) {
+      <div class="compact-card">
+        <div class="cc-row1">
+          <button type="button" class="exp-btn" (click)="toggleCompact()" appTip="Expand card">▸</button>
           <button
             type="button"
-            class="add-to-board on-board"
-            (click)="askTakeOffBoard($event)"
-            appTip="Remove from board"
-          >
-            −
-          </button>
-        } @else {
-          <button
-            type="button"
-            class="add-to-board"
-            [disabled]="!canAdd()"
-            [appTip]="canAdd() ? 'Add to board' : 'Assign a team to every engineer'"
-            (click)="addToBoard($event)"
-          >
-            +
-          </button>
-        }
-        <button type="button" class="remove" (click)="askRemove(); $event.stopPropagation()" appTip="Delete project">🗑</button>
-      </div>
-    </div>
-
-    <div class="sizes" role="group" aria-label="T-shirt size">
-      @for (s of sizes(); track s.id) {
-        <button
-          type="button"
-          class="size-chip"
-          [class.selected]="project.size === s.id"
-          [style.--size-color]="s.color"
-          (click)="setSize(s.id)"
-          [appTip]="sizeTip(s)"
-          [appTipDetail]="sizeTipDetail(s)"
-        >
-          {{ s.id }}
-        </button>
-      }
-    </div>
-
-    <div class="size-detail">
-      <span class="dim-label">Eng:</span>
-      <span class="stepper">
-        <strong>{{ engineers() }}</strong>
-        <span class="btns">
-          <button type="button" (click)="setEngineers(engineers() + 1)" [disabled]="engineers() >= 12" appTip="One more engineer">+</button>
-          <button type="button" (click)="askRemoveEngineer()" [disabled]="engineers() <= 1" appTip="One fewer engineer">−</button>
-        </span>
-      </span>
-      <span class="dim-label">Sprints:</span>
-      <span class="stepper">
-        <strong>{{ sprintsVal() }}</strong>
-        <span class="btns">
-          <button type="button" (click)="stepSprints(1)" [disabled]="sprintsVal() >= quarterSprints()" appTip="One more sprint per engineer">+</button>
-          <button type="button" (click)="stepSprints(-1)" [disabled]="sprintsVal() <= 1" appTip="One fewer sprint per engineer">−</button>
-        </span>
-      </span>
-      <span class="dot">·</span>
-      <span class="total" appTip="Total effort" appTipDetail="Person-sprints (engineers × sprints)">{{ total() }}</span>
-      @if (derivedSpec(); as d) {
-        <span class="derived-chip" [style.--size-color]="d.color" [appTip]="sizeTip(d)" [appTipDetail]="sizeTipDetail(d)">{{ d.id }}</span>
-      }
-    </div>
-
-    <div class="field accountable">
-      <span class="field-label">Accountable team</span>
-      <div class="acct-row">
-        <select
-          [ngModel]="project.accountableTeamId"
-          (ngModelChange)="setAccountable($event)"
-          [class.placeholder]="!project.accountableTeamId"
-        >
-          <option [ngValue]="null">Largest allocation team ({{ teamName(largestTeamId()) }})</option>
-          @for (t of store.teams(); track t.id) {
-            <option [ngValue]="t.id">{{ t.name }}</option>
-          }
-        </select>
-        <button
-          type="button"
-          class="only-btn"
-          [class.on]="!!project.onlyAccountableTeam"
-          [disabled]="!project.onlyAccountableTeam && !onlyTarget()"
-          (click)="toggleOnly()"
-          [appTip]="onlyTip()"
-        >Only</button>
-      </div>
-    </div>
-
-    <div class="slots">
-      <span class="field-label">Engineers from</span>
-      @for (slot of project.slots; track slot.id; let i = $index) {
-        <div class="slot-block">
-          <label class="field slot-row">
-            <span class="slot-index" [style.background]="store.team(slot.teamId)?.color ?? '#e2e8f0'">
-              {{ i + 1 }}
-            </span>
-            <select
-              [ngModel]="slot.teamId"
-              (ngModelChange)="setSlotTeam(i, $event)"
-              [class.placeholder]="!slot.teamId"
-            >
-              <option [ngValue]="null" disabled>Team for engineer {{ i + 1 }}…</option>
-              @for (t of store.teams(); track t.id) {
-                <option [ngValue]="t.id">{{ t.name }}</option>
+            class="swatch"
+            [style.background]="project.color"
+            (click)="togglePalette(); $event.stopPropagation()"
+            appTip="Project color"
+          ></button>
+          @if (paletteOpen()) {
+            <div class="palette" (click)="$event.stopPropagation()">
+              @for (c of palette; track c) {
+                <button
+                  type="button"
+                  class="pal"
+                  [style.background]="c"
+                  [class.active]="project.color === c"
+                  (click)="pickColor(c)"
+                  [appTip]="c"
+                ></button>
               }
-            </select>
-          </label>
-          <div class="grade-row">
-            <span class="any" [class.off]="!!slot.minGrade" appTip="No minimum" appTipDetail="Any grade accepted">any</span>
-            @for (g of gradeList(); track g.id) {
+            </div>
+          }
+          <div class="size-menu-wrap" (mouseenter)="openSizeMenu()" (mouseleave)="closeSizeMenu()">
+            @if (spec(); as sp) {
               <button
                 type="button"
-                class="grade-chip"
-                [class.selected]="isGradeSelected(slot, g.id)"
-                [style.--grade-color]="g.color"
-                (click)="setMinGrade(i, g.id)"
-                [appTip]="g.label + ' (' + g.id + ')'"
+                class="cc-size"
+                [style.--size-color]="sp.color"
+                (click)="toggleSizeMenu(); $event.stopPropagation()"
+                [appTip]="sizeTip(sp)"
+                [appTipDetail]="sizeTipDetail(sp)"
+              >{{ project.size }}</button>
+            } @else {
+              <button
+                type="button"
+                class="cc-size unsized"
+                (click)="toggleSizeMenu(); $event.stopPropagation()"
+                appTip="Pick a size"
+              >?</button>
+            }
+            @if (sizeMenuOpen()) {
+              <div class="size-menu" (click)="$event.stopPropagation()">
+                @for (s of sizes(); track s.id) {
+                  <button
+                    type="button"
+                    class="sm-opt"
+                    [class.selected]="project.size === s.id"
+                    [style.--size-color]="s.color"
+                    (click)="pickSize(s.id)"
+                    [appTip]="sizeTip(s)"
+                    [appTipDetail]="sizeTipDetail(s)"
+                  >{{ s.id }}</button>
+                }
+              </div>
+            }
+          </div>
+          @if (editingName()) {
+            <input
+              class="name-input cc-name-input"
+              autofocus
+              [ngModel]="draftName()"
+              (ngModelChange)="draftName.set($event)"
+              (keyup.enter)="commitRename()"
+              (keyup.escape)="editingName.set(false)"
+              (blur)="commitRename()"
+            />
+          } @else {
+            <button type="button" class="cc-name" (click)="startRename()" appTip="Click to rename">
+              <span>{{ project.name }}</span>
+            </button>
+          }
+          <div class="actions">
+            @if (project.onBoard) {
+              <button
+                type="button"
+                class="add-to-board on-board"
+                (click)="askTakeOffBoard($event)"
+                appTip="Remove from board"
               >
-                {{ g.id }}
+                −
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="add-to-board"
+                [disabled]="!canAdd()"
+                [appTip]="canAdd() ? 'Add to board' : 'Assign a team to every engineer'"
+                (click)="addToBoard($event)"
+              >
+                +
               </button>
             }
           </div>
         </div>
-      } @empty {
-        <p class="slots-empty">No engineers yet</p>
-      }
-      <button
-        type="button"
-        class="add-slot"
-        (click)="setEngineers(engineers() + 1)"
-        [disabled]="engineers() >= 12"
-        appTip="Add another engineer seat"
-      >+ engineer</button>
-    </div>
+        <div class="cc-row2">
+          <select
+            [ngModel]="project.accountableTeamId"
+            (ngModelChange)="setAccountable($event)"
+            [class.placeholder]="!project.accountableTeamId"
+          >
+            <option [ngValue]="null">Largest allocation team ({{ teamName(largestTeamId()) }})</option>
+            @for (t of store.teams(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }}</option>
+            }
+          </select>
+          <button
+            type="button"
+            class="only-btn"
+            [class.on]="!!project.onlyAccountableTeam"
+            [disabled]="!project.onlyAccountableTeam && !onlyTarget()"
+            (click)="toggleOnly()"
+            [appTip]="onlyTip()"
+          >Only</button>
+        </div>
+      </div>
+    } @else {
+      <div class="card-top">
+        <button type="button" class="exp-btn" (click)="toggleCompact()" appTip="Collapse card">▾</button>
+        <button
+          type="button"
+          class="swatch"
+          [style.background]="project.color"
+          (click)="togglePalette(); $event.stopPropagation()"
+          appTip="Project color"
+        ></button>
+        @if (paletteOpen()) {
+          <div class="palette" (click)="$event.stopPropagation()">
+            @for (c of palette; track c) {
+              <button
+                type="button"
+                class="pal"
+                [style.background]="c"
+                [class.active]="project.color === c"
+                (click)="pickColor(c)"
+                [appTip]="c"
+              ></button>
+            }
+          </div>
+        }
+        @if (editingName()) {
+          <input
+            class="name-input"
+            autofocus
+            [ngModel]="draftName()"
+            (ngModelChange)="draftName.set($event)"
+            (keyup.enter)="commitRename()"
+            (keyup.escape)="editingName.set(false)"
+            (blur)="commitRename()"
+          />
+        } @else {
+          <button type="button" class="name" (click)="startRename()" appTip="Click to rename">
+            {{ project.name }}
+          </button>
+        }
+        <div class="actions">
+          @if (project.onBoard) {
+            <button
+              type="button"
+              class="add-to-board on-board"
+              (click)="askTakeOffBoard($event)"
+              appTip="Remove from board"
+            >
+              −
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="add-to-board"
+              [disabled]="!canAdd()"
+              [appTip]="canAdd() ? 'Add to board' : 'Assign a team to every engineer'"
+              (click)="addToBoard($event)"
+            >
+              +
+            </button>
+          }
+          <button type="button" class="remove" (click)="askRemove(); $event.stopPropagation()" appTip="Delete project">🗑</button>
+        </div>
+      </div>
 
-    @if (project.onBoard) {
-      <p class="on-board-note">Planned - {{ teamName(store.effectiveAccountableTeamId(project)) }}</p>
+      <div class="sizes" role="group" aria-label="T-shirt size">
+        @for (s of sizes(); track s.id) {
+          <button
+            type="button"
+            class="size-chip"
+            [class.selected]="project.size === s.id"
+            [style.--size-color]="s.color"
+            (click)="setSize(s.id)"
+            [appTip]="sizeTip(s)"
+            [appTipDetail]="sizeTipDetail(s)"
+          >
+            {{ s.id }}
+          </button>
+        }
+      </div>
+
+      <div class="size-detail">
+        <span class="dim-label">Eng:</span>
+        <span class="stepper">
+          <strong>{{ engineers() }}</strong>
+          <span class="btns">
+            <button type="button" (click)="setEngineers(engineers() + 1)" [disabled]="engineers() >= 12" appTip="One more engineer">+</button>
+            <button type="button" (click)="askRemoveEngineer()" [disabled]="engineers() <= 1" appTip="One fewer engineer">−</button>
+          </span>
+        </span>
+        <span class="dim-label">Sprints:</span>
+        <span class="stepper">
+          <strong>{{ sprintsVal() }}</strong>
+          <span class="btns">
+            <button type="button" (click)="stepSprints(1)" [disabled]="sprintsVal() >= quarterSprints()" appTip="One more sprint per engineer">+</button>
+            <button type="button" (click)="stepSprints(-1)" [disabled]="sprintsVal() <= 1" appTip="One fewer sprint per engineer">−</button>
+          </span>
+        </span>
+        <span class="dot">·</span>
+        <span class="total" appTip="Total effort" appTipDetail="Person-sprints (engineers × sprints)">{{ total() }}</span>
+        @if (derivedSpec(); as d) {
+          <span class="derived-chip" [style.--size-color]="d.color" [appTip]="sizeTip(d)" [appTipDetail]="sizeTipDetail(d)">{{ d.id }}</span>
+        }
+      </div>
+
+      <div class="field accountable">
+        <span class="field-label">Accountable team</span>
+        <div class="acct-row">
+          <select
+            [ngModel]="project.accountableTeamId"
+            (ngModelChange)="setAccountable($event)"
+            [class.placeholder]="!project.accountableTeamId"
+          >
+            <option [ngValue]="null">Largest allocation team ({{ teamName(largestTeamId()) }})</option>
+            @for (t of store.teams(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }}</option>
+            }
+          </select>
+          <button
+            type="button"
+            class="only-btn"
+            [class.on]="!!project.onlyAccountableTeam"
+            [disabled]="!project.onlyAccountableTeam && !onlyTarget()"
+            (click)="toggleOnly()"
+            [appTip]="onlyTip()"
+          >Only</button>
+        </div>
+      </div>
+
+      <div class="slots">
+        <span class="field-label">Engineers from</span>
+        @for (slot of project.slots; track slot.id; let i = $index) {
+          <div class="slot-block">
+            <label class="field slot-row">
+              <span class="slot-index" [style.background]="store.team(slot.teamId)?.color ?? '#e2e8f0'">
+                {{ i + 1 }}
+              </span>
+              <select
+                [ngModel]="slot.teamId"
+                (ngModelChange)="setSlotTeam(i, $event)"
+                [class.placeholder]="!slot.teamId"
+              >
+                <option [ngValue]="null" disabled>Team for engineer {{ i + 1 }}…</option>
+                @for (t of store.teams(); track t.id) {
+                  <option [ngValue]="t.id">{{ t.name }}</option>
+                }
+              </select>
+            </label>
+            <div class="grade-row">
+              <span class="any" [class.off]="!!slot.minGrade" appTip="No minimum" appTipDetail="Any grade accepted">any</span>
+              @for (g of gradeList(); track g.id) {
+                <button
+                  type="button"
+                  class="grade-chip"
+                  [class.selected]="isGradeSelected(slot, g.id)"
+                  [style.--grade-color]="g.color"
+                  (click)="setMinGrade(i, g.id)"
+                  [appTip]="g.label + ' (' + g.id + ')'"
+                >
+                  {{ g.id }}
+                </button>
+              }
+            </div>
+          </div>
+        } @empty {
+          <p class="slots-empty">No engineers yet</p>
+        }
+        <button
+          type="button"
+          class="add-slot"
+          (click)="setEngineers(engineers() + 1)"
+          [disabled]="engineers() >= 12"
+          appTip="Add another engineer seat"
+        >+ engineer</button>
+      </div>
+
+      @if (project.onBoard) {
+        <p class="on-board-note">Planned - {{ teamName(store.effectiveAccountableTeamId(project)) }}</p>
+      }
+
+      <footer class="card-tags"><app-tag-row [projectId]="projectId()" /></footer>
     }
 
     @if (confirmingOffBoard()) {

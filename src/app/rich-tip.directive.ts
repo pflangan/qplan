@@ -3,6 +3,14 @@ import { CapacityStore } from './capacity-store.service';
 
 let activeRichTip: RichTip | null = null;
 
+/** '#rrggbb' → 'rgba(r,g,b,a)'. */
+function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#([0-9a-fA-F]{6})$/.exec(hex);
+  if (!m) return `rgba(15, 23, 42, ${alpha})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
 /**
  * Rich tooltip: replaces native `title` attributes with a styled dark panel.
  * Anchors above the host when there's room, otherwise below.
@@ -21,6 +29,9 @@ let activeRichTip: RichTip | null = null;
 export class RichTip implements OnDestroy {
   readonly label = input.required<string>({ alias: 'appTip' });
   readonly detail = input<string | null>(null, { alias: 'appTipDetail' });
+  /** Optional tag-tinted variant: panel painted with the tag's colors. */
+  readonly tipBg = input<string | null>(null, { alias: 'appTipBg' });
+  readonly tipFg = input<string | null>(null, { alias: 'appTipFg' });
 
   private readonly store = inject(CapacityStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -120,6 +131,16 @@ export class RichTip implements OnDestroy {
       body.className = 'rt-detail';
       body.textContent = detail;
       panel.appendChild(body);
+    }
+
+    const bg = this.tipBg();
+    const fg = this.tipFg();
+    if (bg && fg && /^#[0-9a-fA-F]{6}$/.test(bg) && /^#[0-9a-fA-F]{6}$/.test(fg)) {
+      panel.style.background = bg;
+      head.style.color = fg;
+      const body = panel.querySelector<HTMLElement>('.rt-detail');
+      if (body) body.style.color = hexToRgba(fg, 0.82);
+      panel.style.boxShadow = `0 10px 28px ${hexToRgba(bg, 0.45)}`;
     }
 
     document.body.appendChild(panel);

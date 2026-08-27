@@ -12,6 +12,7 @@ import {
 import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { CapacityStore } from '../capacity-store.service';
 import { RichTip } from '../rich-tip.directive';
+import { TagRow } from '../tags/tag-row';
 import {
   Grade,
   Slot,
@@ -56,7 +57,7 @@ interface CtxMenu {
 
 @Component({
   selector: 'app-work-item',
-  imports: [CdkDropList, RichTip],
+  imports: [CdkDropList, RichTip, TagRow],
   templateUrl: './work-item.html',
   styleUrl: './work-item.scss',
 })
@@ -227,7 +228,7 @@ export class WorkItem {
   /** Tooltip for an empty seat: the reject reason while dragging. */
   dropTitle(slotId: string): string {
     const drag = this.store.drag();
-    if (!drag) return 'Drop an engineer here';
+    if (!drag) return 'Click to select, or drag/drop an engineer here';
     return this.store.assignRejectReason(slotId, drag.engineerId) ?? 'Drop to assign';
   }
 

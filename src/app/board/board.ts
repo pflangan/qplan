@@ -287,6 +287,10 @@ export class Board {
     };
     window.addEventListener('pointermove', this.onLaneMove);
     window.addEventListener('pointerup', this.onLaneUp);
+    // OS gesture recognition (macOS trackpad double-tap, palm rejection, Esc)
+    // cancels the pointer stream with pointercancel instead of pointerup.
+    // Treat it as a release or laneDrag sticks and the edge pan runs forever.
+    window.addEventListener('pointercancel', this.onLaneUp);
     this.setEdgePointer(event.clientX, event.clientY);
     this.startEdgePan('lane');
   }
@@ -310,6 +314,7 @@ export class Board {
     if (!d || e.pointerId !== d.pointerId) return;
     window.removeEventListener('pointermove', this.onLaneMove);
     window.removeEventListener('pointerup', this.onLaneUp);
+    window.removeEventListener('pointercancel', this.onLaneUp);
     this.laneDrag = null;
     this.stopEdgePan();
     const teamId = this.dragTeamId();
@@ -336,6 +341,12 @@ export class Board {
     if (!mode) return;
     // CDK clears its drag signals on pointerup — that's our stop signal.
     if (mode === 'cdk' && !this.store.drag()) {
+      this.edgePanMode = null;
+      return;
+    }
+    // Lane drags have no such signal — belt-and-braces self-stop if the drag
+    // state was somehow cleared without stopEdgePan().
+    if (mode === 'lane' && !this.laneDrag) {
       this.edgePanMode = null;
       return;
     }
@@ -425,6 +436,7 @@ export class Board {
     };
     window.addEventListener('pointermove', this.onPanMove);
     window.addEventListener('pointerup', this.onPanUp);
+    window.addEventListener('pointercancel', this.onPanUp);
   }
 
   private readonly onPanMove = (e: PointerEvent): void => {
@@ -442,6 +454,7 @@ export class Board {
     if (!d || e.pointerId !== d.pointerId) return;
     window.removeEventListener('pointermove', this.onPanMove);
     window.removeEventListener('pointerup', this.onPanUp);
+    window.removeEventListener('pointercancel', this.onPanUp);
     this.panDrag = null;
   };
 
@@ -532,10 +545,14 @@ export class Board {
   tidy(): void {
     if (this.layoutMode() === 'fixed') return;
     const sizes = this.laneSizes();
+    // Step on the same 20px grid that setLanePosition snaps to — accumulating
+    // raw x against snapped positions makes rounding errors stack up and the
+    // gaps come out uneven (e.g. 20/20/40).
     let x = 0;
     for (const t of this.store.teams()) {
       this.store.setLanePosition(t.id, { x, y: 0 });
-      x += (sizes[t.id]?.w ?? LANE_FALLBACK_W) + LANE_GAP;
+      const w = sizes[t.id]?.w ?? LANE_FALLBACK_W;
+      x = Math.round((x + w + LANE_GAP) / GRID) * GRID;
     }
     this.fit();
   }

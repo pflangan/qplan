@@ -49,19 +49,28 @@
           (mouseleave)="scheduleHideTip()"
         >
           <div class="eng-top">
-            <select
-              class="grade-select"
-              [ngModel]="e.grade"
-              (ngModelChange)="setGrade(e.id, $event)"
-              (click)="$event.stopPropagation()"
-              [style.color]="grades()[e.grade].color"
-              [style.font-weight]="700"
-              [appTip]="grades()[e.grade].label"
-            >
-              @for (g of gradeList(); track g.key) {
-                <option [ngValue]="g.key">{{ g.key }} · {{ g.value.label }}</option>
+            <div class="grade-menu-wrap" (click)="$event.stopPropagation()">
+              <button
+                type="button"
+                class="grade-chip-btn"
+                [style.--grade-color]="grades()[e.grade].color"
+                (click)="toggleGradeMenu(e.id)"
+                [appTip]="grades()[e.grade].label"
+              >{{ e.grade }}<span class="caret">▾</span></button>
+              @if (gradeMenuFor() === e.id) {
+                <div class="grade-menu">
+                  @for (g of gradeList(); track g.key) {
+                    <button
+                      type="button"
+                      class="gm-opt"
+                      [class.selected]="e.grade === g.key"
+                      [style.--grade-color]="g.value.color"
+                      (click)="pickGrade(e.id, g.key)"
+                    ><span class="gm-key">{{ g.key }}</span><span class="gm-label">{{ g.value.label }}</span></button>
+                  }
+                </div>
               }
-            </select>
+            </div>
             <span class="eng-name">{{ e.name }}</span>
             <button
               type="button"

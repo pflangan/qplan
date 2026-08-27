@@ -12,7 +12,7 @@
 @if (store.teams().length > 0) {
   <div class="group-ribbon">
     <div class="ribbon-title">
-      <h4>All teams</h4>
+      <h4>Capacity and work allocation across all teams</h4>
       <span class="cap">{{ groupFree() }} free of {{ groupTotal() }}</span>
       @if (groupOver() > 0) {
         <span class="over-note">over by {{ groupOver() }}</span>

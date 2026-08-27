@@ -80,7 +80,7 @@
             [cdkDragData]="{ kind: 'available', engineerId: m.engineer.id, name: m.engineer.name, grade: m.engineer.grade }"
             (cdkDragStarted)="store.dragStarted(m.engineer.id)"
             (cdkDragEnded)="store.dragEnded()"
-            [appTip]="availTipData() ? '' : 'Drag into a work slot'"
+            [appTip]="availTipData() ? '' : 'Right click to assign,\n or drag/drop into a work slot'"
             appTipDetail="Right-click for open seats"
             (contextmenu)="onCtxMenu($event, m.engineer.id, m.engineer.name)"
           >
@@ -96,7 +96,7 @@
                 (mouseleave)="scheduleHideAvailTip()"
                 (click)="$event.stopPropagation()"
               >
-                ℹ
+                <span class="glyph">ℹ</span>
               </button>
               <span class="line-name">{{ m.engineer.name }}</span>
             </div>

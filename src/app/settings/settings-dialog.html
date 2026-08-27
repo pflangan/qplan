@@ -91,6 +91,74 @@
     </section>
 
     <section class="section">
+      <h3>Project tags</h3>
+      <div class="tag-table">
+        @for (row of draftTags(); track $index; let i = $index) {
+          <div class="tag-edit-row">
+            <span class="cell-color">
+              <button
+                type="button"
+                class="pair-swatch"
+                [style.background]="row.bg"
+                [style.color]="row.fg"
+                (click)="togglePair(i); $event.stopPropagation()"
+              >Aa</button>
+              @if (pairOpen() === i) {
+                <div class="pair-pal" (click)="$event.stopPropagation()">
+                  @for (p of tagPairs; track p.bg) {
+                    <button
+                      type="button"
+                      class="pal"
+                      [style.background]="p.bg"
+                      [style.color]="p.fg"
+                      [class.active]="row.bg === p.bg"
+                      (click)="pickPair(i, p)"
+                    >Aa</button>
+                  }
+                </div>
+              }
+            </span>
+            <input
+              class="t-short"
+              maxlength="8"
+              placeholder="Short"
+              [ngModel]="row.short"
+              (ngModelChange)="setDraftShort(i, $event)"
+            >
+            <input
+              class="t-full"
+              maxlength="80"
+              placeholder="Full name"
+              [ngModel]="row.full"
+              (ngModelChange)="setDraftFull(i, $event)"
+            >
+            @if (confirmDeleteTagRow() === i) {
+              <span class="tag-confirm" (click)="$event.stopPropagation()">
+                Delete and remove from all projects?
+                <button type="button" (click)="confirmDeleteTag(i)">Delete</button>
+                <button type="button" (click)="confirmDeleteTagRow.set(null)">Keep</button>
+              </span>
+            } @else {
+              <button
+                type="button"
+                class="t-del"
+                appTip="Delete tag"
+                (click)="confirmDeleteTagRow.set(i); $event.stopPropagation()"
+              >✕</button>
+            }
+          </div>
+        } @empty {
+          <p class="hint">No tags yet — add one to label projects across panels.</p>
+        }
+      </div>
+      <button
+        type="button"
+        class="t-add"
+        (click)="addTagRow(); $event.stopPropagation()"
+      >+ tag</button>
+    </section>
+
+    <section class="section">
       <h3>Planning dates</h3>
       <div class="field">
         <span>Start from</span>

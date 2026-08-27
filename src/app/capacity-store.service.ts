@@ -16,6 +16,8 @@ import {
   SizeId,
   Slot,
   Project,
+  TagDef,
+  TAG_COLOR_PAIRS,
   Team,
   WorkItem,
   sizeForTotal,
@@ -56,6 +58,26 @@ function nextBusinessDay(d: Date): Date {
 /** Pass through valid #rrggbb colors, else fall back. */
 function hexColor(v: unknown, fb: string): string {
   return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v : fb;
+}
+
+/** Clamp/validate a raw tag list (missing ids assigned, dupes dropped). */
+function sanitizeTags(raw: TagDef[] | undefined): TagDef[] {
+  if (!Array.isArray(raw)) return [];
+  const out: TagDef[] = [];
+  for (const t of raw) {
+    if (!t) continue;
+    const short = String(t.short ?? '').trim().slice(0, 8);
+    if (!short) continue;
+    if (out.some((x) => x.short.toLowerCase() === short.toLowerCase())) continue;
+    out.push({
+      id: t.id || uid(),
+      short,
+      full: String(t.full ?? '').trim().slice(0, 80),
+      bg: hexColor(t.bg, TAG_COLOR_PAIRS[0].bg),
+      fg: hexColor(t.fg, TAG_COLOR_PAIRS[0].fg),
+    });
+  }
+  return out;
 }
 
 const TEAM_PALETTE = [
@@ -127,6 +149,26 @@ export class CapacityStore {
   setPanelsExpanded(projects: boolean, onCall: boolean): void {
     this.projectsExpanded.set(projects);
     this.onCallExpanded.set(onCall);
+  }
+
+  /** Global default for compact project cards (persisted in ui). */
+  readonly projectsCompact = signal(false);
+  /** Per-card deviations from the global default (ephemeral). */
+  private readonly cardCompactOverrides = signal<Record<string, boolean>>({});
+
+  isCardCompact(projectId: string): boolean {
+    return this.cardCompactOverrides()[projectId] ?? this.projectsCompact();
+  }
+
+  /** Flip every card at once and forget individual deviations. */
+  toggleCompactAll(): void {
+    this.projectsCompact.update((v) => !v);
+    this.cardCompactOverrides.set({});
+  }
+
+  toggleCardCompact(projectId: string): void {
+    const next = !this.isCardCompact(projectId);
+    this.cardCompactOverrides.update((o) => ({ ...o, [projectId]: next }));
   }
 
   readonly selectedQuarter = computed(
@@ -253,6 +295,7 @@ export class CapacityStore {
       showDates: patch.showDates !== undefined ? !!patch.showDates : current.showDates,
       sizes,
       gradeColors,
+      tags: sanitizeTags(patch.tags !== undefined ? patch.tags : current.tags),
     });
     this.rotateQuartersIfNeeded(startQuarter);
     this.clampToQuarter();
@@ -273,6 +316,75 @@ export class CapacityStore {
       ]),
     ) as typeof GRADES;
   });
+
+  // ---------- Project tags ----------
+
+  /** App-wide tag definitions (settings-persisted). */
+  readonly tagDefs = computed<TagDef[]>(() => this.settings().tags ?? []);
+
+  tagDef(id: string): TagDef | undefined {
+    return this.tagDefs().find((t) => t.id === id);
+  }
+
+  /** Create a tag definition; null (with toast) when the shorthand is taken. */
+  createTag(short: string, full: string, pair: { bg: string; fg: string }): TagDef | null {
+    const s = short.trim().slice(0, 8);
+    if (!s) return null;
+    if (this.tagDefs().some((t) => t.short.toLowerCase() === s.toLowerCase())) {
+      this.showToast(`A tag "${s}" already exists`);
+      return null;
+    }
+    const def: TagDef = { id: uid(), short: s, full: full.trim().slice(0, 80), bg: pair.bg, fg: pair.fg };
+    this.settings.update((cur) => ({ ...cur, tags: [...(cur.tags ?? []), def] }));
+    return def;
+  }
+
+  renameTag(id: string, short: string, full: string): void {
+    this.settings.update((cur) => ({
+      ...cur,
+      tags: (cur.tags ?? []).map((t) =>
+        t.id === id ? { ...t, short: short.trim().slice(0, 8) || t.short, full: full.trim().slice(0, 80) } : t,
+      ),
+    }));
+  }
+
+  setTagColor(id: string, bg: string, fg: string): void {
+    this.settings.update((cur) => ({
+      ...cur,
+      tags: (cur.tags ?? []).map((t) => (t.id === id ? { ...t, bg, fg } : t)),
+    }));
+  }
+
+  /** Toggle a tag on a project in the selected quarter (both hosts re-render). */
+  toggleProjectTag(projectId: string, tagId: string): void {
+    const toggle = (tags: string[] | undefined): string[] => {
+      const cur = tags ?? [];
+      return cur.includes(tagId) ? cur.filter((t) => t !== tagId) : [...cur, tagId];
+    };
+    this.projects.update((ps) =>
+      ps.map((p) => (p.id === projectId ? { ...p, tags: toggle(p.tags) } : p)),
+    );
+    // Defensive: keep stashed quarters in sync too.
+    for (const plan of Object.values(this.plans)) {
+      plan.projects = plan.projects.map((p) =>
+        p.id === projectId ? { ...p, tags: toggle(p.tags) } : p,
+      );
+    }
+  }
+
+  /** Delete a tag definition and strip it from every project in every quarter. */
+  deleteTag(id: string): void {
+    this.settings.update((cur) => ({
+      ...cur,
+      tags: (cur.tags ?? []).filter((t) => t.id !== id),
+    }));
+    const strip = (p: Project): Project =>
+      p.tags?.includes(id) ? { ...p, tags: p.tags.filter((t) => t !== id) } : p;
+    this.projects.update((ps) => ps.map(strip));
+    for (const plan of Object.values(this.plans)) {
+      plan.projects = plan.projects.map(strip);
+    }
+  }
 
   /** Reorder quarters so the chosen start quarter comes first (dates chain from it). */
   private rotateQuartersIfNeeded(startQuarter: QuarterId): void {
@@ -1342,6 +1454,7 @@ export class CapacityStore {
       ui: {
         projectsExpanded: this.projectsExpanded(),
         onCallExpanded: this.onCallExpanded(),
+        projectsCompact: this.projectsCompact(),
       },
       plans: {
         ...this.plans,
@@ -1417,7 +1530,7 @@ export class CapacityStore {
       teams?: Team[];
       settings?: Partial<Settings>;
       boardLayout?: BoardLayout;
-      ui?: { projectsExpanded?: boolean; onCallExpanded?: boolean };
+      ui?: { projectsExpanded?: boolean; onCallExpanded?: boolean; projectsCompact?: boolean };
       plans?: Record<
         string,
         {
@@ -1513,6 +1626,18 @@ export class CapacityStore {
       color: s.color || COLOR_PALETTE[colorCursor++ % COLOR_PALETTE.length],
     });
 
+    // Tag ids known after sanitizeTags runs in saveSettings — strip orphans on
+    // import so deleted defs can't linger on projects.
+    const tagIds = new Set(
+      sanitizeTags(
+        (data.settings as Partial<Settings> | undefined)?.tags ?? DEFAULT_SETTINGS.tags,
+      ).map((t) => t.id),
+    );
+    const withTags = (s: Project): Project => ({
+      ...s,
+      tags: [...new Set((s.tags ?? []).filter((t) => tagIds.has(t)))],
+    });
+
     // v5 and earlier stored a prefix (`sprints: N` = available sprints 1..N);
     // v6 stores explicit 0-based off indices. Migrate per quarter — each has
     // its own sprint count.
@@ -1571,7 +1696,7 @@ export class CapacityStore {
     for (const [quarterId, plan] of Object.entries(quarterPlans)) {
       // v5+ writes `projects`; v1–4 wrote `subInitiatives` — accept both so
       // old export files and localStorage migrate in place.
-      const projects = (plan.projects ?? plan.subInitiatives ?? []).map(withColor);
+      const projects = (plan.projects ?? plan.subInitiatives ?? []).map(withColor).map(withTags);
       plans[quarterId] = {
         projects,
         capacity: migrateCapacity(quarterId, plan.capacity ?? {}),
@@ -1599,6 +1724,7 @@ export class CapacityStore {
     if (data.ui) {
       this.projectsExpanded.set(data.ui.projectsExpanded !== false);
       this.onCallExpanded.set(data.ui.onCallExpanded !== false);
+      this.projectsCompact.set(data.ui.projectsCompact === true);
     }
     return true;
   }

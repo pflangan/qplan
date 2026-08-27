@@ -391,13 +391,93 @@
     }
   }
 
-  .grade-select {
+  // Rich grade dropdown: closed chip shows just the code + caret, the open
+  // menu lists full labels (no native-select width truncation).
+  .grade-menu-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .grade-chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     border: none;
     background: transparent;
     font-size: 13px;
+    font-weight: 700;
+    color: var(--grade-color);
     cursor: pointer;
-    outline: none;
-    width: 42px;
+    padding: 1px 3px;
+    border-radius: 6px;
+    line-height: 1.4;
+
+    .caret {
+      font-size: 9px;
+      color: #94a3b8;
+      line-height: 1;
+    }
+
+    &:hover {
+      background: rgba(15, 23, 42, 0.06);
+    }
+  }
+
+  .grade-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 40;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+
+    // Bridge over the gap so chip → menu hover doesn't hit the element below
+    &::before {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: 0;
+      right: 0;
+      height: 5px;
+    }
+
+    .gm-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      white-space: nowrap;
+
+      &:hover {
+        background: #f1f5f9;
+      }
+
+      &.selected {
+        background: color-mix(in srgb, var(--grade-color) 14%, white);
+      }
+
+      .gm-key {
+        font-weight: 800;
+        color: var(--grade-color);
+        min-width: 24px;
+      }
+
+      .gm-label {
+        color: #334155;
+      }
+    }
   }
 
   .remove-eng {

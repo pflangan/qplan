@@ -1,0 +1,69 @@
+<div class="tag-row" (click)="$event.stopPropagation()">
+  @for (t of tags(); track t.id) {
+    <span
+      class="tag-chip"
+      [style.background]="t.bg"
+      [style.color]="t.fg"
+      [appTip]="t.full || t.short"
+      [appTipBg]="t.bg"
+      [appTipFg]="t.fg"
+    >{{ t.short }}<button
+      type="button"
+      class="tag-x"
+      (click)="removeTag($event, t.id)"
+      appTip="Remove tag"
+    >✕</button></span>
+  }
+  <button
+    type="button"
+    class="tag-add"
+    (click)="toggleMenu($event)"
+    appTip="Tags"
+    appTipDetail="Add or remove tags for this project"
+  >{{ menuOpen() ? '−' : '+' }}</button>
+  @if (menuOpen()) {
+    <div class="tag-menu" #menu>
+      <div class="tm-head">
+        Tags
+        <button type="button" class="tm-close" (click)="menuOpen.set(false)">✕</button>
+      </div>
+      @for (d of store.tagDefs(); track d.id) {
+        <button type="button" class="tm-opt" [class.on]="has(d.id)" (click)="toggle(d.id)">
+          <span class="tm-chip" [style.background]="d.bg" [style.color]="d.fg">{{ d.short }}</span>
+          <span class="tm-full">{{ d.full }}</span>
+          <span class="tm-check">{{ has(d.id) ? '✓' : '' }}</span>
+        </button>
+      } @empty {
+        <p class="tm-empty">No tags yet</p>
+      }
+      <div class="tm-divider"></div>
+      <div class="tm-new">
+        <div class="tm-inputs">
+          <input
+            maxlength="8"
+            placeholder="Short"
+            [(ngModel)]="newShort"
+          >
+          <input
+            maxlength="80"
+            placeholder="Full name (e.g. Core and Maintenance)"
+            [(ngModel)]="newFull"
+          >
+        </div>
+        <div class="tm-pairs">
+          @for (p of pairs; track p.bg; let i = $index) {
+            <button
+              type="button"
+              class="tm-pair"
+              [class.active]="i === newPair()"
+              [style.background]="p.bg"
+              [style.color]="p.fg"
+              (click)="newPair.set(i)"
+            >Aa</button>
+          }
+        </div>
+        <button type="button" class="tm-create" (click)="create()" [disabled]="!newShort().trim()">create tag</button>
+      </div>
+    </div>
+  }
+</div>

@@ -27,6 +27,8 @@ export class TeamCard {
   readonly importing = signal(false);
   readonly importText = signal('');
   readonly paletteOpen = signal(false);
+  /** Engineer whose grade quick-pick menu is open; null when closed. */
+  readonly gradeMenuFor = signal<string | null>(null);
   /** Rich confirm open — removing an engineer from the team. */
   readonly confirmingRemoveEng = signal(false);
   /** Rich confirm open — removing an engineer from the quarter capacity. */
@@ -80,7 +82,9 @@ export class TeamCard {
       this.engTip.set({
         engineerId,
         x: Math.max(8, Math.min(rect.left, window.innerWidth - 288)),
-        y: rect.top < 240 ? rect.bottom : rect.top,
+        // Extra 10px clearance above the row so the tip doesn't sit under the
+        // cursor and block moving up the engineer list.
+        y: rect.top < 240 ? rect.bottom : rect.top - 10,
         below: rect.top < 240,
       });
     }, 250);
@@ -133,6 +137,15 @@ export class TeamCard {
 
   setGrade(engineerId: string, grade: string): void {
     this.store.setEngineerGrade(this.teamId(), engineerId, grade as Grade);
+  }
+
+  toggleGradeMenu(engineerId: string): void {
+    this.gradeMenuFor.set(this.gradeMenuFor() === engineerId ? null : engineerId);
+  }
+
+  pickGrade(engineerId: string, grade: Grade): void {
+    this.gradeMenuFor.set(null);
+    this.setGrade(engineerId, grade);
   }
 
   toggleSprint(engineerId: string, index: number): void {
@@ -206,7 +219,10 @@ export class TeamCard {
         this.removeFromQuarter();
       }
     } else if (event.key === 'Escape') {
-      if (this.confirmingRemoveEng()) {
+      if (this.gradeMenuFor()) {
+        event.preventDefault();
+        this.gradeMenuFor.set(null);
+      } else if (this.confirmingRemoveEng()) {
         event.preventDefault();
         this.confirmingRemoveEng.set(false);
         this.pendingEngineerId.set(null);
@@ -221,5 +237,6 @@ export class TeamCard {
   @HostListener('document:click')
   closePalette(): void {
     this.paletteOpen.set(false);
+    this.gradeMenuFor.set(null);
   }
 }

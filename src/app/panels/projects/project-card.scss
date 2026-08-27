@@ -2,6 +2,11 @@
   display: block;
 }
 
+.card-tags {
+  display: block;
+  margin-top: 10px;
+}
+
 .card {
   background: #fff;
   border: 3.5px solid #e2e8f0;
@@ -20,6 +25,192 @@
   &.on-board {
     background: #f8fafc;
   }
+
+  // Compact 2-line rendering: tighter padding and row gap
+  &.compact {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+}
+
+// Open/close arrow shared by compact (expand ▸) and full (collapse ▾) cards.
+// Big bare glyph — no button chrome, sized to be legible at a glance.
+// Absolutely positioned inside the card so its centre is identical in both
+// modes (the compact/full padding difference can't shift it).
+.exp-btn {
+  position: absolute;
+  top: 2px;
+  left: 10px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: color 0.15s;
+
+  &:hover {
+    color: #6366f1;
+  }
+}
+
+.compact-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cc-row1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding-left: 32px; // clear the absolutely positioned expand arrow
+
+  .swatch {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 50%;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 0;
+
+    &:hover {
+      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
+    }
+  }
+}
+
+.cc-row2 {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding-left: 32px; // align under the name, past the arrow + swatch + chip
+
+  select {
+    flex: 1;
+    min-width: 0;
+    padding: 3px 6px;
+    font-size: 13px;
+  }
+}
+
+// Size chip + hover-open quick-pick menu
+.size-menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.cc-size {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 7px;
+  padding: 2px 9px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: var(--size-color);
+    color: var(--size-color);
+  }
+
+  // Unsized project: dashed "?" chip inviting a pick from the same menu
+  &.unsized {
+    border-style: dashed;
+    color: #6366f1;
+
+    &:hover {
+      border-color: #6366f1;
+      color: #4f46e5;
+    }
+  }
+}
+
+.size-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 40;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  padding: 5px;
+  display: flex;
+  gap: 4px;
+
+  // Invisible bridge over the gap so moving chip → menu never leaves the wrap
+  &::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 0;
+    right: 0;
+    height: 6px;
+  }
+
+  .sm-opt {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.12s;
+
+    &:hover {
+      border-color: var(--size-color);
+      color: var(--size-color);
+    }
+
+    &.selected {
+      background: var(--size-color);
+      border-color: var(--size-color);
+      color: white;
+    }
+  }
+}
+
+.cc-name {
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: left;
+  border-radius: 6px;
+  cursor: text;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+  }
+
+  &:hover {
+    background: #f1f5f9;
+  }
+}
+
+.cc-name-input {
+  flex: 1;
+  padding: 2px 6px;
+  font-size: 13.5px;
 }
 
 .palette {
@@ -60,6 +251,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  padding-left: 28px; // clear the absolutely positioned collapse arrow
 
   .swatch {
     width: 12px;

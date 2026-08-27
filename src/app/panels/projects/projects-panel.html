@@ -11,6 +11,13 @@
 <div class="panel-header">
   <h2>Projects</h2>
   <div class="header-side">
+    <button
+      type="button"
+      class="compact-btn"
+      [class.on]="store.projectsCompact()"
+      (click)="store.toggleCompactAll()"
+      [appTip]="store.projectsCompact() ? 'Expand all project cards' : 'Compact all project cards'"
+    >{{ store.projectsCompact() ? '⊞' : '⊟' }}</button>
     <span class="count">{{ store.projects().length }}</span>
     <button
       type="button"

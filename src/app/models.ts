@@ -64,6 +64,33 @@ export const COLOR_PALETTE: string[] = [
   '#831843', '#9d174d', '#be185d', '#db2777', '#ec4899',
 ];
 
+/** Contrast-matched background/foreground pairs for tag chips. */
+export const TAG_COLOR_PAIRS: { bg: string; fg: string }[] = [
+  { bg: '#7f1d1d', fg: '#fee2e2' },
+  { bg: '#c2410c', fg: '#ffedd5' },
+  { bg: '#b45309', fg: '#fef3c7' },
+  { bg: '#166534', fg: '#dcfce7' },
+  { bg: '#65a30d', fg: '#1a2e05' },
+  { bg: '#0f766e', fg: '#ccfbf1' },
+  { bg: '#06b6d4', fg: '#164e63' },
+  { bg: '#1d4ed8', fg: '#dbeafe' },
+  { bg: '#6d28d9', fg: '#ede9fe' },
+  { bg: '#be185d', fg: '#fce7f3' },
+  { bg: '#334155', fg: '#e2e8f0' },
+  { bg: '#e11d48', fg: '#fff1f2' },
+];
+
+/** A reusable project tag definition (created once, applied to many projects). */
+export interface TagDef {
+  id: string;
+  /** Chip shorthand, e.g. "C&M". */
+  short: string;
+  /** Full name shown in the rich tooltip, e.g. "Core and Maintenance". */
+  full: string;
+  bg: string;
+  fg: string;
+}
+
 export type QuarterId = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
 export const QUARTER_IDS: QuarterId[] = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -83,6 +110,8 @@ export interface Settings {
   sizes: SizeSpec[];
   /** User-pickable background color per grade (drives grade tags app-wide). */
   gradeColors: Record<Grade, string>;
+  /** App-wide project tag definitions. */
+  tags?: TagDef[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -98,6 +127,7 @@ export const DEFAULT_SETTINGS: Settings = {
     G5: GRADES.G5.color,
     G6: GRADES.G6.color,
   },
+  tags: [],
 };
 
 export interface Engineer {
@@ -143,6 +173,8 @@ export interface Project {
   onBoard: boolean;
   /** Display color, user-pickable; drives work-item and card accents. */
   color: string;
+  /** Applied tag-definition ids. */
+  tags?: string[];
 }
 
 export type WorkRole = 'owned' | 'supporting';

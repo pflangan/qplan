@@ -1,0 +1,249 @@
+:host {
+  display: block;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+
+  .tag-x {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 10px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &:hover .tag-x {
+    opacity: 0.85;
+  }
+}
+
+.tag-add {
+  width: 20px;
+  height: 20px;
+  border: 1px dashed #c7d2fe;
+  border-radius: 6px;
+  background: #f8faff;
+  color: #6366f1;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #eef2ff;
+    border-color: #6366f1;
+  }
+}
+
+// Lives on <body> (hoisted from .tag-row by the component) so it can overflow
+// the panel's clipping scroll container; left/top are set inline when placed.
+.tag-menu {
+  position: fixed;
+  z-index: 200;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  padding: 10px 20px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tm-head {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #475569;
+  padding: 6px;
+
+  .tm-close {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+  }
+}
+
+.tm-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  &.on {
+    background: #eef2ff;
+  }
+
+  .tm-chip {
+    padding: 1px 6px;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .tm-full {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #0f172a;
+  }
+
+  .tm-check {
+    color: #6366f1;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+}
+
+.tm-empty {
+  margin: 0;
+  padding: 4px 6px;
+  font-size: 16px;
+  color: #64748b;
+}
+
+.tm-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 14px 0;
+}
+
+.tm-new {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .tm-inputs {
+    display: flex;
+    gap: 4px;
+  }
+
+  input {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 6px;
+    font-size: 16px;
+    outline: none;
+
+    &:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+
+    // Short-hand field: sized to its 8-char max, sitting beside the full name
+    &:first-child {
+      width: 88px;
+      flex-shrink: 0;
+    }
+
+    &:last-child {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}
+
+.tm-pairs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tm-pair {
+  width: 26px;
+  height: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    transform: scale(1.08);
+  }
+
+  &.active {
+    outline: 2px solid #0f172a;
+    outline-offset: 1px;
+  }
+}
+
+.tm-create {
+  border: none;
+  background: #6366f1;
+  color: white;
+  border-radius: 6px;
+  padding: 5px 0;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: #4f46e5;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

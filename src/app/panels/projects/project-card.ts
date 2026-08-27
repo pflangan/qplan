@@ -3,10 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { CapacityStore } from '../../capacity-store.service';
 import { COLOR_PALETTE, GRADE_RANK, Grade, sizeForTotal, sizeSpec } from '../../models';
 import { RichTip } from '../../rich-tip.directive';
+import { TagRow } from '../../tags/tag-row';
 
 @Component({
   selector: 'app-project-card',
-  imports: [FormsModule, RichTip],
+  imports: [FormsModule, RichTip, TagRow],
   templateUrl: './project-card.html',
   styleUrl: './project-card.scss',
 })
@@ -27,6 +28,12 @@ export class ProjectCard {
   readonly editingName = signal(false);
   readonly draftName = signal('');
   readonly paletteOpen = signal(false);
+  /** Compact 2-line rendering (per-card override of the global default). */
+  readonly compact = computed(() => this.store.isCardCompact(this.projectId()));
+  /** Size quick-pick menu in compact mode: hover opens, click pins. */
+  readonly sizeMenuOpen = signal(false);
+  readonly sizeMenuPinned = signal(false);
+  private sizeMenuCloseTimer: ReturnType<typeof setTimeout> | undefined;
   /** Rich confirm open — removing a boarded project from the Planning Board. */
   readonly confirmingOffBoard = signal(false);
   /** Rich confirm open — removing an engineer seat that holds data. */
@@ -317,9 +324,47 @@ export class ProjectCard {
     this.paletteOpen.set(false);
   }
 
+  toggleCompact(): void {
+    this.store.toggleCardCompact(this.projectId());
+  }
+
+  openSizeMenu(): void {
+    if (!this.compact()) return;
+    clearTimeout(this.sizeMenuCloseTimer);
+    this.sizeMenuOpen.set(true);
+  }
+
+  /**
+   * Mouse leaving the chip/menu area closes the menu unless it was
+   * click-pinned — after a short grace period so diagonal moves from the
+   * chip onto the menu don't dismiss it.
+   */
+  closeSizeMenu(): void {
+    if (this.sizeMenuPinned()) return;
+    clearTimeout(this.sizeMenuCloseTimer);
+    this.sizeMenuCloseTimer = setTimeout(() => this.sizeMenuOpen.set(false), 350);
+  }
+
+  toggleSizeMenu(): void {
+    clearTimeout(this.sizeMenuCloseTimer);
+    const open = !this.sizeMenuOpen();
+    this.sizeMenuOpen.set(open);
+    this.sizeMenuPinned.set(open);
+  }
+
+  pickSize(size: string): void {
+    clearTimeout(this.sizeMenuCloseTimer);
+    this.setSize(size);
+    this.sizeMenuOpen.set(false);
+    this.sizeMenuPinned.set(false);
+  }
+
   @HostListener('document:click')
   closePalette(): void {
+    clearTimeout(this.sizeMenuCloseTimer);
     this.paletteOpen.set(false);
+    this.sizeMenuOpen.set(false);
+    this.sizeMenuPinned.set(false);
   }
 
   /** Enter confirms, Escape cancels — whichever rich confirm is open. */
