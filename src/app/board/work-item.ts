@@ -148,6 +148,13 @@ export class WorkItem {
       .projects()
       .find((s) => s.id === this.item().project.id)
       ?.slots.find((sl) => sl.id === t.slotId)?.tl;
+    // Off sprints inside this bar's own window — mirrors barConflict().
+    let conflicts: number[] = [];
+    const current = allocations.find((a) => a.slotId === t.slotId);
+    if (team && current) {
+      const off = new Set(this.store.unavailableOf(team.id, t.engineerId));
+      conflicts = Array.from({ length: current.sprints }, (_, k) => current.start + k).filter((i) => off.has(i));
+    }
     return {
       engineer,
       team,
@@ -156,6 +163,7 @@ export class WorkItem {
       pct: avail ? Math.round((used / avail) * 100) : 0,
       allocations,
       currentSlotId: t.slotId,
+      conflicts,
       tl,
       x: t.x,
       y: t.y,
@@ -291,6 +299,11 @@ export class WorkItem {
   /** Sprint count of a filled bar (fixed to the size estimate). */
   sprintsOf(s: WorkItemSlot): number {
     return s.sprints;
+  }
+
+  /** "S3, S5" — 0-based sprint indices to compact labels. */
+  sprintLabels(indices: number[]): string {
+    return indices.map((i) => `S${i + 1}`).join(', ');
   }
 
   /** True when the bar's window (live during a drag) hits an off sprint. */

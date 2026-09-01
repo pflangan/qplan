@@ -5,9 +5,11 @@ import {
   HostListener,
   afterRenderEffect,
   computed,
+  effect,
   inject,
   input,
   signal,
+  untracked,
   viewChild,
   viewChildren,
 } from '@angular/core';
@@ -128,6 +130,8 @@ export class Board {
   private panDrag: PanDrag | null = null;
   private laneDrag: LaneDrag | null = null;
   private laneResizeObserver: ResizeObserver | null = null;
+  /** Last measured height per lane, to detect growth (add engineer / project / expand). */
+  private prevLaneHeights = new Map<string, number>();
 
   // ---- Edge auto-pan during drags ----
 
@@ -229,6 +233,24 @@ export class Board {
         maxRight = x + (sizes[t.id]?.w ?? LANE_FALLBACK_W);
       }
     });
+
+    // A lane that grew taller (engineer added, project assigned, section
+    // expanded) must not overrun the lane below it: shift it up — bottom
+    // edge fixed — cascading to lanes above when they block the climb.
+    effect(() => {
+      const sizes = this.laneSizes();
+      if (this.layoutMode() === 'fixed' || this.laneDrag) return;
+      untracked(() => {
+        for (const [id, s] of Object.entries(sizes)) {
+          const prev = this.prevLaneHeights.get(id);
+          this.prevLaneHeights.set(id, s.h);
+          if (prev !== undefined && s.h > prev + 1) this.makeRoomBelow(id);
+        }
+        for (const id of this.prevLaneHeights.keys()) {
+          if (!sizes[id]) this.prevLaneHeights.delete(id);
+        }
+      });
+    });
   }
 
   // ---- Lane positions ----
@@ -267,6 +289,53 @@ export class Board {
       }
     }
     return false;
+  }
+
+  /**
+   * The lane just grew taller and would overrun a lane below it. Shift it up
+   * by the overlap (its bottom edge stays fixed); if a lane above blocks the
+   * climb, cascade that one up too, so no two lanes ever overlap.
+   */
+  private makeRoomBelow(changedId: string): void {
+    const sizes = this.laneSizes();
+    const positions = this.store.boardLayout().positions;
+    const mine = sizes[changedId];
+    const myPos = positions[changedId];
+    if (!mine || !myPos) return;
+    const xHits = (id: string): boolean => {
+      const s = sizes[id];
+      const p = positions[id];
+      return !!s && !!p && myPos.x < p.x + s.w && myPos.x + mine.w > p.x;
+    };
+
+    // How far up must I move so my bottom edge clears every lane below me?
+    let shift = 0;
+    for (const [id, p] of Object.entries(positions)) {
+      if (id === changedId || p.y < myPos.y || !xHits(id)) continue;
+      shift = Math.max(shift, myPos.y + mine.h + LANE_GAP - p.y);
+    }
+    if (shift <= 0) return;
+    shift = Math.ceil(shift / GRID) * GRID;
+
+    const moves: [string, number][] = [[changedId, myPos.y - shift]];
+    // Lanes stacked above mine (nearest first) must also climb if the shifted
+    // top would run into them. floorY only decreases, so one pass settles it.
+    let floorY = myPos.y - shift;
+    const above = Object.entries(positions)
+      .filter(([id, p]) => id !== changedId && p.y < myPos.y && xHits(id))
+      .sort((a, b) => b[1].y - a[1].y);
+    for (const [id, p] of above) {
+      const s = sizes[id];
+      if (!s) continue;
+      if (p.y + s.h > floorY - LANE_GAP) {
+        const newY = floorY - LANE_GAP - s.h;
+        moves.push([id, newY]);
+        floorY = newY;
+      }
+    }
+    for (const [id, y] of moves) {
+      this.store.setLanePosition(id, { x: positions[id].x, y });
+    }
   }
 
   /** Lane header grabbed: drag freely in layout px, snap to grid, never overlap. */

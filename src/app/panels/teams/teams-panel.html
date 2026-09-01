@@ -2,10 +2,10 @@
   type="button"
   class="sliver"
   (click)="store.setPanelsExpanded(store.projectsExpanded(), true)"
-  appTip="Expand On Call panel"
+  [appTip]="'Expand ' + store.onCallPanelTitle() + ' panel'"
 >
   <span class="sliver-icon">☎</span>
-  <span class="sliver-label">On Call</span>
+  <span class="sliver-label">{{ store.onCallPanelTitle() }}</span>
 </button>
 
 <div class="panel-header">
@@ -14,9 +14,23 @@
       type="button"
       class="collapse-btn"
       (click)="store.setPanelsExpanded(store.projectsExpanded(), false)"
-      appTip="Collapse On Call panel"
+      [appTip]="'Collapse ' + store.onCallPanelTitle() + ' panel'"
     >»</button>
-    <h2>On Call / Code Owners</h2>
+    @if (editingTitle()) {
+      <input
+        class="title-input"
+        autofocus
+        [ngModel]="draftTitle()"
+        (ngModelChange)="draftTitle.set($event)"
+        (keyup.enter)="commitTitle()"
+        (keyup.escape)="editingTitle.set(false)"
+        (blur)="commitTitle()"
+      />
+    } @else {
+      <button type="button" class="title-btn" (click)="startTitleEdit()" appTip="Click to rename panel">
+        {{ store.onCallPanelTitle() }}
+      </button>
+    }
   </div>
   <span class="count">{{ store.teams().length }}</span>
 </div>

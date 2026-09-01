@@ -24,6 +24,20 @@ export class ProjectsPanel {
   readonly newName = signal('');
   readonly showPaste = signal(false);
   readonly pasteText = signal('');
+  /** Click-to-edit panel title (persisted via the store). */
+  readonly editingTitle = signal(false);
+  readonly draftTitle = signal('');
+
+  startTitleEdit(): void {
+    this.draftTitle.set(this.store.projectsPanelTitle());
+    this.editingTitle.set(true);
+  }
+
+  commitTitle(): void {
+    if (!this.editingTitle()) return;
+    this.store.renameProjectsPanel(this.draftTitle());
+    this.editingTitle.set(false);
+  }
 
   add(): void {
     this.store.addProject(this.newName());

@@ -23,6 +23,7 @@ import {
   sizeForTotal,
   sizeSpec,
 } from './models';
+import { APP_VERSION } from './version';
 
 /** One sprint window an engineer is booked for, with display info. */
 export interface Allocation {
@@ -153,6 +154,22 @@ export class CapacityStore {
 
   /** Global default for compact project cards (persisted in ui). */
   readonly projectsCompact = signal(false);
+
+  /** User-renamable panel titles (persisted in the snapshot's ui field). */
+  static readonly DEFAULT_PROJECTS_PANEL_TITLE = 'Projects';
+  static readonly DEFAULT_ON_CALL_PANEL_TITLE = 'On Call / Code Owners';
+  readonly projectsPanelTitle = signal(CapacityStore.DEFAULT_PROJECTS_PANEL_TITLE);
+  readonly onCallPanelTitle = signal(CapacityStore.DEFAULT_ON_CALL_PANEL_TITLE);
+
+  renameProjectsPanel(name: string): void {
+    const n = name.trim();
+    if (n) this.projectsPanelTitle.set(n);
+  }
+
+  renameOnCallPanel(name: string): void {
+    const n = name.trim();
+    if (n) this.onCallPanelTitle.set(n);
+  }
   /** Per-card deviations from the global default (ephemeral). */
   private readonly cardCompactOverrides = signal<Record<string, boolean>>({});
 
@@ -1441,10 +1458,14 @@ export class CapacityStore {
 
   // ---------- Import / Export ----------
 
+  /** Current snapshot format version; bumped whenever the export shape changes. */
+  static readonly SNAPSHOT_VERSION = 7;
+
   /** Plain-object snapshot of all state (export files + localStorage share this). */
   private exportSnapshot() {
     return {
-      version: 6,
+      version: CapacityStore.SNAPSHOT_VERSION,
+      appVersion: APP_VERSION,
       exportedAt: new Date().toISOString(),
       selectedQuarterId: this.selectedQuarterId(),
       quarters: this.quarters(),
@@ -1455,6 +1476,8 @@ export class CapacityStore {
         projectsExpanded: this.projectsExpanded(),
         onCallExpanded: this.onCallExpanded(),
         projectsCompact: this.projectsCompact(),
+        projectsPanelTitle: this.projectsPanelTitle(),
+        onCallPanelTitle: this.onCallPanelTitle(),
       },
       plans: {
         ...this.plans,
@@ -1517,20 +1540,105 @@ export class CapacityStore {
   }
 
   /**
-   * Validate + install a snapshot (v1 flat, v2 per-quarter, v3 with settings,
-   * v4 with board layout, v6 per-sprint availability). Returns false for
-   * unrecognized shapes. Shared by file import and localStorage load.
+   * One import handler per historical snapshot version: `migrations[v]`
+   * upgrades a version-v snapshot in place to v+1. Add a new entry (and bump
+   * SNAPSHOT_VERSION) whenever the export format changes.
+   */
+  private readonly migrations: Record<number, (d: any) => void> = {
+    // v1 held one flat plan — land it in the quarter it was saved on.
+    1: (d) => {
+      d.plans = {
+        [d.selectedQuarterId ?? d.quarters[0]?.id ?? 'Q1']: {
+          projects: d.subInitiatives ?? [],
+          capacity: d.capacity ?? {},
+          assignments: d.assignments ?? {},
+        },
+      };
+    },
+    // v1/v2 files predate project colors — backfill from the shared palette.
+    2: (d) => {
+      let cursor = 0;
+      for (const plan of Object.values<any>(d.plans ?? {})) {
+        plan.projects = (plan.projects ?? plan.subInitiatives ?? []).map(
+          (s: Project) => ({
+            ...s,
+            color: s.color || COLOR_PALETTE[cursor++ % COLOR_PALETTE.length],
+          }),
+        );
+      }
+    },
+    // v3→v4 (board layout) and v4→v5 changed nothing the installer relies
+    // on — kept explicit so every version has a handler.
+    3: () => {},
+    4: () => {},
+    // v5 and earlier stored a capacity prefix (`sprints: N` = available
+    // sprints 1..N); v6 stores explicit 0-based off indices. Per quarter —
+    // each has its own sprint count.
+    5: (d) => {
+      const sprints = new Map<string, number>(
+        (d.quarters ?? []).map((q: Quarter) => [q.id, q.sprints]),
+      );
+      for (const [quarterId, plan] of Object.entries<any>(d.plans ?? {})) {
+        const quarter = sprints.get(quarterId) ?? 0;
+        for (const members of Object.values<any[]>(plan.capacity ?? {})) {
+          for (const m of members ?? []) {
+            if (Array.isArray(m.unavailable)) continue;
+            const avail = Math.max(0, Math.min(quarter, Math.round(m.sprints ?? quarter)));
+            m.unavailable = Array.from({ length: quarter - avail }, (_, i) => avail + i);
+          }
+        }
+      }
+    },
+    // v7 adds user-renamable panel titles.
+    6: (d) => {
+      d.ui = {
+        projectsPanelTitle: CapacityStore.DEFAULT_PROJECTS_PANEL_TITLE,
+        onCallPanelTitle: CapacityStore.DEFAULT_ON_CALL_PANEL_TITLE,
+        ...d.ui,
+      };
+    },
+  };
+
+  /** Step a snapshot up through per-version handlers to the current version. */
+  private migrateSnapshot(input: unknown): Record<string, unknown> | null {
+    if (!input || typeof input !== 'object') return null;
+    const data = input as { version?: number } & Record<string, unknown>;
+    if (
+      typeof data.version !== 'number' ||
+      data.version < 1 ||
+      data.version > CapacityStore.SNAPSHOT_VERSION
+    ) {
+      return null;
+    }
+    while (data.version < CapacityStore.SNAPSHOT_VERSION) {
+      this.migrations[data.version](data);
+      data.version++;
+    }
+    return data;
+  }
+
+  /**
+   * Validate + install a snapshot. Older versions are first stepped up to the
+   * current format by `migrations`; returns false for unrecognized shapes.
+   * Shared by file import and localStorage load.
    */
   private applyData(input: unknown): boolean {
-    if (!input || typeof input !== 'object') return false;
-    const data = input as {
-      version?: number;
+    const migrated = this.migrateSnapshot(input);
+    if (!migrated) return false;
+    const data = migrated as {
+      version: number;
       selectedQuarterId?: string;
-      quarters?: Quarter[];
-      teams?: Team[];
+      quarters: Quarter[];
+      teams: Team[];
       settings?: Partial<Settings>;
       boardLayout?: BoardLayout;
-      ui?: { projectsExpanded?: boolean; onCallExpanded?: boolean; projectsCompact?: boolean };
+      ui?: {
+        projectsExpanded?: boolean;
+        onCallExpanded?: boolean;
+        projectsCompact?: boolean;
+        projectsPanelTitle?: string;
+        onCallPanelTitle?: string;
+      };
       plans?: Record<
         string,
         {
@@ -1543,21 +1651,8 @@ export class CapacityStore {
           >;
         }
       >;
-      // v1 flat layout (single shared plan)
-      subInitiatives?: Project[];
-      capacity?: Record<string, CapacityMember[]>;
-      assignments?: Record<
-        string,
-        { engineerId: string; start: number; sprints?: number }
-      >;
     };
     if (
-      (data.version !== 1 &&
-        data.version !== 2 &&
-        data.version !== 3 &&
-        data.version !== 4 &&
-        data.version !== 5 &&
-        data.version !== 6) ||
       !Array.isArray(data.quarters) ||
       !data.quarters.length ||
       !Array.isArray(data.teams)
@@ -1607,24 +1702,7 @@ export class CapacityStore {
       return clean;
     };
 
-    // v1 files hold one flat plan — land it in the quarter it was saved on.
-    const quarterPlans =
-      data.version === 1
-        ? {
-            [data.selectedQuarterId ?? data.quarters[0].id]: {
-              subInitiatives: data.subInitiatives ?? [],
-              capacity: data.capacity ?? {},
-              assignments: data.assignments ?? {},
-            },
-          }
-        : data.plans ?? {};
-
-    // v1/v2 files predate project colors — backfill from the shared palette.
-    let colorCursor = 0;
-    const withColor = (s: Project): Project => ({
-      ...s,
-      color: s.color || COLOR_PALETTE[colorCursor++ % COLOR_PALETTE.length],
-    });
+    const quarterPlans = data.plans ?? {};
 
     // Tag ids known after sanitizeTags runs in saveSettings — strip orphans on
     // import so deleted defs can't linger on projects.
@@ -1639,41 +1717,27 @@ export class CapacityStore {
     });
 
     // v5 and earlier stored a prefix (`sprints: N` = available sprints 1..N);
-    // v6 stores explicit 0-based off indices. Migrate per quarter — each has
-    // its own sprint count.
+    // migration step 5 converts those to explicit off indices — here we only
+    // sanitize: dedupe, drop out-of-range indices.
     const quarterSprints = new Map(
       data.quarters.map((q: Quarter) => [q.id, q.sprints]),
     );
     const migrateCapacity = (
       quarterId: string,
-      capacity: Record<string, { engineerId: string; unavailable?: number[]; sprints?: number }[]>,
+      capacity: Record<string, { engineerId: string; unavailable?: number[] }[]>,
     ): Record<string, CapacityMember[]> => {
       const quarter = quarterSprints.get(quarterId) ?? 0;
       const migrate = (m: {
         engineerId: string;
         unavailable?: number[];
-        sprints?: number;
-      }): CapacityMember => {
-        if (Array.isArray(m.unavailable)) {
-          return {
-            engineerId: m.engineerId,
-            unavailable: [
-              ...new Set(
-                m.unavailable.filter((i) => Number.isInteger(i) && i >= 0 && i < quarter),
-              ),
-            ].sort((a, b) => a - b),
-          };
-        }
-        // Legacy prefix: available sprints 1..sprints → the tail is off.
-        const avail = Math.max(0, Math.min(quarter, Math.round(m.sprints ?? quarter)));
-        return {
-          engineerId: m.engineerId,
-          unavailable: Array.from(
-            { length: quarter - avail },
-            (_, i) => avail + i,
+      }): CapacityMember => ({
+        engineerId: m.engineerId,
+        unavailable: [
+          ...new Set(
+            (m.unavailable ?? []).filter((i) => Number.isInteger(i) && i >= 0 && i < quarter),
           ),
-        };
-      };
+        ].sort((a, b) => a - b),
+      });
       return Object.fromEntries(
         Object.entries(capacity ?? {}).map(([teamId, members]) => [
           teamId,
@@ -1694,9 +1758,9 @@ export class CapacityStore {
       }
     > = {};
     for (const [quarterId, plan] of Object.entries(quarterPlans)) {
-      // v5+ writes `projects`; v1–4 wrote `subInitiatives` — accept both so
-      // old export files and localStorage migrate in place.
-      const projects = (plan.projects ?? plan.subInitiatives ?? []).map(withColor).map(withTags);
+      // v5+ writes `projects`; earlier wrote `subInitiatives` — accept both
+      // so hand-edited files still load.
+      const projects = (plan.projects ?? plan.subInitiatives ?? []).map(withTags);
       plans[quarterId] = {
         projects,
         capacity: migrateCapacity(quarterId, plan.capacity ?? {}),
@@ -1725,6 +1789,12 @@ export class CapacityStore {
       this.projectsExpanded.set(data.ui.projectsExpanded !== false);
       this.onCallExpanded.set(data.ui.onCallExpanded !== false);
       this.projectsCompact.set(data.ui.projectsCompact === true);
+      this.projectsPanelTitle.set(
+        data.ui.projectsPanelTitle || CapacityStore.DEFAULT_PROJECTS_PANEL_TITLE,
+      );
+      this.onCallPanelTitle.set(
+        data.ui.onCallPanelTitle || CapacityStore.DEFAULT_ON_CALL_PANEL_TITLE,
+      );
     }
     return true;
   }

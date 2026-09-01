@@ -446,6 +446,29 @@
     }
   }
 
+  // Unavailability conflict banner: bar sits on an off sprint.
+  // Solid dark-red band so the white heading / light body stay readable.
+  .tip-warn {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: #7f1d1d;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: #fecaca;
+
+    strong {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: white;
+    }
+  }
+
   .tip-tl {
     display: flex;
     align-items: center;

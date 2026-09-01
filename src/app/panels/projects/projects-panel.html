@@ -2,14 +2,28 @@
   type="button"
   class="sliver"
   (click)="store.setPanelsExpanded(true, store.onCallExpanded())"
-  appTip="Expand Projects panel"
+  [appTip]="'Expand ' + store.projectsPanelTitle() + ' panel'"
 >
   <span class="sliver-icon">▤</span>
-  <span class="sliver-label">Projects</span>
+  <span class="sliver-label">{{ store.projectsPanelTitle() }}</span>
 </button>
 
 <div class="panel-header">
-  <h2>Projects</h2>
+  @if (editingTitle()) {
+    <input
+      class="title-input"
+      autofocus
+      [ngModel]="draftTitle()"
+      (ngModelChange)="draftTitle.set($event)"
+      (keyup.enter)="commitTitle()"
+      (keyup.escape)="editingTitle.set(false)"
+      (blur)="commitTitle()"
+    />
+  } @else {
+    <button type="button" class="title-btn" (click)="startTitleEdit()" appTip="Click to rename panel">
+      {{ store.projectsPanelTitle() }}
+    </button>
+  }
   <div class="header-side">
     <button
       type="button"

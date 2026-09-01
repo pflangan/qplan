@@ -123,6 +123,15 @@
       <span>{{ t.used }} of {{ t.avail }} sprints allocated</span>
       <b [class.over]="t.pct > 100">{{ t.pct }}%</b>
     </div>
+    @if (t.conflicts.length) {
+      <div class="tip-warn">
+        <strong>⚠ Unavailability conflict</strong>
+        <span>
+          This bar covers off sprints {{ sprintLabels(t.conflicts) }} — the engineer
+          is not available then.
+        </span>
+      </div>
+    }
     <label class="tip-tl" (click)="$event.stopPropagation()">
       <input type="checkbox" [checked]="t.tl" (change)="toggleTL(t.currentSlotId)" />
       Tech lead

@@ -6,6 +6,7 @@ import { TeamsPanel } from './panels/teams/teams-panel';
 import { Board } from './board/board';
 import { RichTip } from './rich-tip.directive';
 import { SettingsDialog } from './settings/settings-dialog';
+import { APP_VERSION } from './version';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +18,8 @@ export class App {
   readonly store = inject(CapacityStore);
   /** Selectable sprint counts per quarter. */
   readonly sprintOptions = [5, 6, 7];
+  /** App semver, shown as subscript after the title. */
+  readonly version = APP_VERSION;
   /** Auto-opens on first run (no persisted data). */
   readonly settingsOpen = signal(!this.store.loadedFromStorage);
   /** Selected board mode: canvas or fixed. */
